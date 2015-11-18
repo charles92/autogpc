@@ -4,8 +4,12 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from GPy.plotting.matplot_dep.base_plots import x_frame1D
 
+# Figure DPI
 default_dpi = 1200
+# Number of samples drawn from the posterior GP, which are then plotted
+default_res = 500
 
 class GPCPlot(object):
     """
@@ -34,19 +38,9 @@ class GPCPlot(object):
     def draw(self):
         raise NotImplementedError
 
-    def show(self):
-        print 'DEBUG: GPCPlot show():'
-        print self.model
-        plt.close('all')
-        self.draw()
-        plt.show()
-
     def save(self, fname):
-        print 'DEBUG: GPCPlot save()'
-        print self.model
-        plt.close('all')
-        self.draw()
-        plt.savefig(fname=fname, dpi=self.dpi, format='eps')
+        self.fig.savefig(fname, dpi=self.dpi)
+        print 'DEBUG: GPCPlot.save(): fname={}, dpi={}'.format(fname, self.dpi)
 
 
 class GPCPlot1D(GPCPlot):
@@ -59,7 +53,29 @@ class GPCPlot1D(GPCPlot):
         GPCPlot.__init__(self, model, dpi)
 
     def draw(self):
-        print 'TODO: 1D'
+        print 'TODO: draw 1D'
+        m = self.model
+        fig, ax = plt.subplots()
+
+        # Data range
+        xnew, xmin, xmax = x_frame1D(m.X, resolution=default_res)
+
+        # Data points
+        ax.plot(m.X, m.Y, label='Training data', linestyle='',
+            marker='x', mfc='blue', mew=1)
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin=-0.2, ymax=1.2)
+        ax.set_yticks([0, 0.5, 1])
+
+        # Latent function
+        mu, var = m._raw_predict(xnew)
+        stdev = np.sqrt(var)
+        lower = m.likelihood.gp_link.transf(mu - 2 * stdev)
+        upper = m.likelihood.gp_link.transf(mu + 2 * stdev)
+        mu = m.likelihood.gp_link.transf(mu)
+        plotGP(xnew, mu, lower=lower, upper=upper, ax=ax)
+
+        self.fig = fig
 
 
 class GPCPlot2D(GPCPlot):
@@ -99,3 +115,30 @@ class GPCPlotHD(GPCPlot):
 
     def draw(self):
         print 'TODO: HD'
+
+def plotGP(x, mu, lower=None, upper=None, ax=None,
+    meancolor='blue', edgecolor='black', fillcolor='#DDDDDD',
+    meanwidth=2, edgewidth=0.25):
+    """
+    Make a generic 1-D GP plot on certain axes, with optional error band
+
+    """
+    if ax is None:
+        _, ax = plt.subplots()
+
+    plots = {}
+
+    # Mean
+    plots['mean'] = ax.plot(x, mu, color=meancolor, linewidth=meanwidth)
+
+    if lower is not None and upper is not None:
+        # Lower and upper edges
+        plots['lower'] = ax.plot(x, lower, color=edgecolor, linewidth=edgewidth)
+        plots['upper'] = ax.plot(x, upper, color=edgecolor, linewidth=edgewidth)
+
+        # Fill between edges
+        plots['fill'] = ax.fill(np.vstack((x,x[::-1])),
+            np.vstack((upper,lower[::-1])),
+            color=fillcolor)
+
+    return plots
