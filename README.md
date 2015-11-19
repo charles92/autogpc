@@ -1,8 +1,8 @@
-# autogpc
-an automatic Gaussian process classifier
+# AutoGPC
+An automatic Gaussian process classifier.
 
-## What is autogpc?
-autogpc is a package for automatic construction and natural-language description
+## What is AutoGPC?
+AutoGPC is a package for automatic construction and natural-language description
 of (binary) classification models based on Gaussian processes. It is an extension
 to the [Automatic Statistician](http://www.automaticstatistician.com/index/)
 which aims to automate data science.
