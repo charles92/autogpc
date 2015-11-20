@@ -144,6 +144,12 @@ class GPCPlot3D(GPCPlot):
     """
     Gaussian process classification plot: 3-dimensional input
 
+    TODO:
+    1. Correct occlusion relationship between data points and the zero contour
+    surface
+    2. Ability to handle more complex zero contour surfaces, such as a closed
+    curve surface
+
     """
 
     def __init__(self, model, dpi=default_dpi):
@@ -165,7 +171,7 @@ class GPCPlot3D(GPCPlot):
             vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
 
         # Zero contour surface
-        xmin, xmax, xrng, xgrd = getFrame(m.X, resolution=64)
+        xmin, xmax, xrng, xgrd = getFrame(m.X, resolution=16)
         mu, _ = m._raw_predict(xgrd)
         zc = findZeros3D(xrng, mu.reshape((xrng.shape[0],) * 3))
         plots['gpzerocontour'] = ax.plot_trisurf(zc[:,0], zc[:,1], zc[:,2],
@@ -276,8 +282,20 @@ def findZeros1D(X, Y):
     Y0 = Y.flatten()
     assert X0.size == Y0.size, 'X, Y must be vectors of the same length.'
 
-    sgn = np.sign(Y0)
-    sgn[sgn == 0] = -1
-    zcx = X0[np.where(np.diff(sgn))]
+    # sgn1: +ve -> 1, 0 ->  0, -ve -> -1
+    sgn1 = np.sign(Y0)
+    # sgn2: +ve -> 1, 0 -> -1, -ve -> -1
+    sgn2 = sgn1.copy()
+    sgn2[sgn1 == 0] = -1
+
+    sgndiff = np.hstack((np.diff(sgn2), 0))
+
+    # i1: the indices before a zero crossing
+    i1 = np.nonzero(sgndiff * sgn1)
+    # i2: the indices after a zero crossing
+    i2 = tuple(i + 1 for i in i1)
+
+    # Linear interpolation
+    zcx = X0[i1] - (X0[i2] - X0[i1]) / (Y0[i2] - Y0[i1]) * Y0[i1]
 
     return zcx
