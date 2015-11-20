@@ -151,6 +151,28 @@ class GPCPlot3D(GPCPlot):
 
     def draw(self):
         print 'TODO: 3D'
+        m = self.model
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_xlabel('x0')
+        ax.set_ylabel('x1')
+        ax.set_zlabel('x2')
+        plots = {}
+
+        # Data points
+        plots['data'] = ax.scatter(m.X[:,0], m.X[:,1], m.X[:,2], c=m.Y,
+            marker='o', edgecolors='none', depthshade=True,
+            vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
+
+        # Zero contour surface
+        xmin, xmax, xrng, xgrd = getFrame(m.X, resolution=64)
+        mu, _ = m._raw_predict(xgrd)
+        zc = findZeros3D(xrng, mu.reshape((xrng.shape[0],) * 3))
+        plots['gpzerocontour'] = ax.plot_trisurf(zc[:,0], zc[:,1], zc[:,2],
+            color='green', alpha=0.2, linewidth=0)
+
+        self.fig = fig
+        return plots
 
 
 class GPCPlotHD(GPCPlot):
@@ -164,6 +186,27 @@ class GPCPlotHD(GPCPlot):
 
     def draw(self):
         print 'TODO: HD'
+
+
+def getFrame(X, resolution=default_res):
+    """
+    Calculate the optimal frame for plotting data points whose x coordinates
+    (x0, x1, ...) are given in matrix X.
+
+    """
+    xmin, xmax = X.min(0), X.max(0)
+    margin = 0.2 * (xmax - xmin)
+    xmin, xmax = xmin - margin, xmax + margin
+
+    xdim = X.shape[1]
+    xrng = np.vstack(tuple(np.linspace(x1, x2, num=resolution) \
+        for x1,x2 in zip(xmin,xmax))).T
+
+    grids = np.meshgrid(*tuple(xrng[:,i] for i in range(xdim)), indexing='ij')
+    xgrd = np.hstack(tuple(grids[i].reshape(-1,1) for i in range(xdim)))
+
+    return xmin, xmax, xrng, xgrd
+
 
 def plotGP(x, mu, lower=None, upper=None, ax=None,
     meancolor='blue', edgecolor='black', fillcolor='#DDDDDD',
@@ -191,3 +234,50 @@ def plotGP(x, mu, lower=None, upper=None, ax=None,
             color=fillcolor)
 
     return plots
+
+
+def findZeros3D(X, Y):
+    """
+    Find zero crossings of function Y=f(X), where X is 3-dimensional.
+    X is a tuple of column vectors, corresponding to the sampling points in each
+    axis.
+
+    """
+    if isinstance(X, tuple) and len(X) == 3:
+        X0 = X[0].flatten()
+        X1 = X[1].flatten()
+        X2 = X[2].flatten()
+    elif isinstance(X, np.ndarray) and X.ndim == 2 and X.shape[1] == 3:
+        X0 = X[:,0]
+        X1 = X[:,1]
+        X2 = X[:,2]
+    else:
+        raise ValueError('Invalid input arguments.')
+
+    assert (X0.size, X1.size, X2.size) == Y.shape, \
+    'The shape of output Y does not match that of the input X.'
+
+    Z = np.empty((0, 3))
+
+    for i0,x0 in enumerate(X0):
+        for i1,x1 in enumerate(X1):
+            for x2 in findZeros1D(X2, Y[i0,i1,:]):
+                Z = np.vstack((Z, [x0, x1, x2]))
+
+    return Z
+
+def findZeros1D(X, Y):
+    """
+    Find zero crossings of univariate function Y=f(X).
+    X, Y are vectors of the same length.
+
+    """
+    X0 = X.flatten()
+    Y0 = Y.flatten()
+    assert X0.size == Y0.size, 'X, Y must be vectors of the same length.'
+
+    sgn = np.sign(Y0)
+    sgn[sgn == 0] = -1
+    zcx = X0[np.where(np.diff(sgn))]
+
+    return zcx
