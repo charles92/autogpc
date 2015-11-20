@@ -15,6 +15,7 @@ default_res = 256
 # Number of contour levels
 default_lvl = 7
 
+
 class GPCPlot(object):
     """
     Gaussian process classification plot
@@ -59,7 +60,6 @@ class GPCPlot1D(GPCPlot):
     def draw(self):
         m = self.model
         fig, ax = plt.subplots()
-
         plots = {}
 
         # Data range
@@ -96,7 +96,6 @@ class GPCPlot2D(GPCPlot):
     def draw(self):
         m = self.model
         fig, (ax0, ax1) = plt.subplots(nrows=1, ncols=2, sharex=True, sharey=True)
-
         plots = {}
 
         # Data range
@@ -106,9 +105,9 @@ class GPCPlot2D(GPCPlot):
 
         # Data points
         plots['data1'] = ax0.scatter(m.X[:,0], m.X[:,1], c=m.Y, marker='o',
-            edgecolors='none', alpha=0.5, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
+            edgecolors='none', alpha=0.2, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
         plots['data2'] = ax1.scatter(m.X[:,0], m.X[:,1], c=m.Y, marker='o',
-            edgecolors='none', alpha=0.5, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
+            edgecolors='none', alpha=0.2, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
 
         # Latent function
         x0range = np.linspace(xmin[0], xmax[0], default_res)
@@ -125,7 +124,7 @@ class GPCPlot2D(GPCPlot):
         zcind = np.where(cs.levels == 0)[0].flatten()
         plt.setp(cs.collections[zcind], linewidth=2)
         # Add contour labels
-        ax0.clabel(cs, fontsize='smaller')
+        ax0.clabel(cs, fontsize=8)
         plots['gpmu'] = cs
 
         # Latent function - standard deviation
@@ -134,7 +133,7 @@ class GPCPlot2D(GPCPlot):
         cs = ax1.contour(x0range, x1range, sd, default_lvl // 2,
             vmin=sd.min(), vmax=sd.max(), cmap=plt.cm.OrRd)
         # Add contour labels
-        ax1.clabel(cs, fontsize='smaller')
+        ax1.clabel(cs, fontsize=8)
         plots['gpsd'] = cs
 
         self.fig = fig
