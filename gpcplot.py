@@ -6,9 +6,6 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from GPy.plotting.matplot_dep.base_plots import x_frame1D, x_frame2D
 
-# Figure DPI
-default_dpi = 300
-
 # Number of samples drawn from the posterior GP, which are then plotted
 default_res = 256
 
@@ -22,30 +19,30 @@ class GPCPlot(object):
 
     """
 
-    def create(model, dpi=default_dpi):
+    def create(model):
         input_dim = model.input_dim
         if input_dim == 1:
-            return GPCPlot1D(model, dpi)
+            return GPCPlot1D(model)
         elif input_dim == 2:
-            return GPCPlot2D(model, dpi)
+            return GPCPlot2D(model)
         elif input_dim == 3:
-            return GPCPlot3D(model, dpi)
+            return GPCPlot3D(model)
         elif input_dim >= 4:
-            return GPCPlotHD(model, dpi)
+            return GPCPlotHD(model)
         else:
             raise ValueError('The model must have >= 1 input dimension.')
     create = staticmethod(create)
 
-    def __init__(self, model, dpi=default_dpi):
+    def __init__(self, model):
         self.model = model
-        self.dpi = dpi
 
     def draw(self):
         raise NotImplementedError
 
     def save(self, fname):
-        self.fig.savefig(fname, dpi=self.dpi)
-        print 'DEBUG: GPCPlot.save(): fname={}, dpi={}'.format(fname, self.dpi)
+        self.fig.savefig(fname + '.eps')
+        fig.close(self.fig)
+        print 'DEBUG: GPCPlot.save(): fname={}'.format(fname + '.eps')
 
 
 class GPCPlot1D(GPCPlot):
@@ -54,8 +51,8 @@ class GPCPlot1D(GPCPlot):
 
     """
 
-    def __init__(self, model, dpi=default_dpi):
-        GPCPlot.__init__(self, model, dpi)
+    def __init__(self, model):
+        GPCPlot.__init__(self, model)
 
     def draw(self):
         m = self.model
@@ -90,8 +87,8 @@ class GPCPlot2D(GPCPlot):
 
     """
 
-    def __init__(self, model, dpi=default_dpi):
-        GPCPlot.__init__(self, model, dpi)
+    def __init__(self, model):
+        GPCPlot.__init__(self, model)
 
     def draw(self):
         m = self.model
@@ -152,8 +149,8 @@ class GPCPlot3D(GPCPlot):
 
     """
 
-    def __init__(self, model, dpi=default_dpi):
-        GPCPlot.__init__(self, model, dpi)
+    def __init__(self, model):
+        GPCPlot.__init__(self, model)
 
     def draw(self):
         print 'TODO: 3D'
@@ -187,8 +184,8 @@ class GPCPlotHD(GPCPlot):
 
     """
 
-    def __init__(self, model, dpi=default_dpi):
-        GPCPlot.__init__(self, model, dpi)
+    def __init__(self, model):
+        GPCPlot.__init__(self, model)
 
     def draw(self):
         print 'TODO: HD'
