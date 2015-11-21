@@ -3,9 +3,7 @@
 
 import numpy as np
 from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from mayavi import mlab
-from GPy.plotting.matplot_dep.base_plots import x_frame1D, x_frame2D
 
 # Number of samples drawn from the posterior GP, which are then plotted
 default_res = 256
@@ -42,7 +40,7 @@ class GPCPlot(object):
 
     def save(self, fname):
         self.fig.savefig(fname + '.eps')
-        fig.close(self.fig)
+        plt.close(self.fig)
         print 'DEBUG: GPCPlot.save(): fname={}'.format(fname + '.eps')
 
 
@@ -61,7 +59,7 @@ class GPCPlot1D(GPCPlot):
         plots = {}
 
         # Data range
-        xnew, xmin, xmax = x_frame1D(m.X, resolution=default_res)
+        xmin, xmax, _, xgrd = getFrame(m.X)
         ax.set_xlim(xmin, xmax)
         ax.set_ylim(ymin=-0.2, ymax=1.2)
         ax.set_yticks([0, 0.5, 1])
@@ -71,12 +69,12 @@ class GPCPlot1D(GPCPlot):
             marker='x', mfc='blue', mew=1)
 
         # Latent function
-        mu, var = m._raw_predict(xnew)
+        mu, var = m._raw_predict(xgrd)
         stdev = np.sqrt(var)
         lower = m.likelihood.gp_link.transf(mu - 2 * stdev)
         upper = m.likelihood.gp_link.transf(mu + 2 * stdev)
         mu = m.likelihood.gp_link.transf(mu)
-        plots['link'] = plotGP(xnew, mu, lower=lower, upper=upper, ax=ax)
+        plots['link'] = plotGP(xgrd, mu, lower=lower, upper=upper, ax=ax)
 
         self.fig = fig
         return plots
@@ -97,7 +95,7 @@ class GPCPlot2D(GPCPlot):
         plots = {}
 
         # Data range
-        xnew, _, _, xmin, xmax = x_frame2D(m.X, resolution=default_res)
+        xmin, xmax, xrng, xgrd = getFrame(m.X)
         ax0.set_xlim(xmin[0], xmax[0])
         ax0.set_ylim(xmin[1], xmax[1])
 
@@ -108,13 +106,11 @@ class GPCPlot2D(GPCPlot):
             edgecolors='none', alpha=0.2, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
 
         # Latent function
-        x0range = np.linspace(xmin[0], xmax[0], default_res)
-        x1range = np.linspace(xmin[1], xmax[1], default_res)
-        mu, var = m._raw_predict(xnew)
+        mu, var = m._raw_predict(xgrd)
 
         # Latent function - mean
         mu = mu.reshape(default_res, default_res).T
-        cs = ax0.contour(x0range, x1range, mu, default_lvl,
+        cs = ax0.contour(xrng[:,0], xrng[:,1], mu, default_lvl,
             vmin=mu.min(), vmax=mu.max(), cmap=plt.cm.jet)
         # Make zero contour thicker
         if np.all(cs.levels != 0):
@@ -128,7 +124,7 @@ class GPCPlot2D(GPCPlot):
         # Latent function - standard deviation
         var = var.reshape(default_res, default_res).T
         sd = np.sqrt(var)
-        cs = ax1.contour(x0range, x1range, sd, default_lvl // 2,
+        cs = ax1.contour(xrng[:,0], xrng[:,1], sd, default_lvl // 2,
             vmin=sd.min(), vmax=sd.max(), cmap=plt.cm.OrRd)
         # Add contour labels
         ax1.clabel(cs, fontsize=8)
@@ -167,7 +163,7 @@ class GPCPlot3D(GPCPlot):
         xx, yy, zz = np.meshgrid(*tuple(xrng[:,i] for i in range(3)), indexing='ij')
         mu = mu.reshape(xx.shape)
         plots['gpmu'] = mlab.contour3d(xx, yy, zz, mu, figure=fig, colormap='jet',
-            contours=[-1, 0, 1], opacity = 0.3)
+            contours=[-1, 0, 1], opacity = 0.25, vmin=-1.5, vmax=1.5)
 
         self.fig = fig
         return plots
