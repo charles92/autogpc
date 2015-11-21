@@ -4,6 +4,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from mayavi import mlab
 from GPy.plotting.matplot_dep.base_plots import x_frame1D, x_frame2D
 
 # Number of samples drawn from the posterior GP, which are then plotted
@@ -140,42 +141,49 @@ class GPCPlot2D(GPCPlot):
 class GPCPlot3D(GPCPlot):
     """
     Gaussian process classification plot: 3-dimensional input
-
-    TODO:
-    1. Correct occlusion relationship between data points and the zero contour
-    surface
-    2. Ability to handle more complex zero contour surfaces, such as a closed
-    curve surface
-
     """
 
     def __init__(self, model):
         GPCPlot.__init__(self, model)
 
     def draw(self):
-        print 'TODO: 3D'
         m = self.model
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.set_xlabel('x0')
-        ax.set_ylabel('x1')
-        ax.set_zlabel('x2')
+        fig = mlab.figure(bgcolor=(1, 1, 1), fgcolor=(0, 0, 0), size=(600, 600))
         plots = {}
 
-        # Data points
-        plots['data'] = ax.scatter(m.X[:,0], m.X[:,1], m.X[:,2], c=m.Y,
-            marker='o', edgecolors='none', depthshade=True,
-            vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
+        xmin, xmax, xrng, xgrd = getFrame(m.X, res=32)
 
-        # Zero contour surface
-        xmin, xmax, xrng, xgrd = getFrame(m.X, resolution=16)
+        # Data points
+        pts3d = mlab.points3d(m.X[:,0], m.X[:,1], m.X[:,2], m.Y[:,0],
+            extent=np.vstack((xmin, xmax)).T.flatten(), figure=fig,
+            mode='sphere', vmin=-0.2, vmax=1.2, colormap='jet',
+            scale_mode='none', scale_factor=0.05)
+        mlab.outline(pts3d)
+        mlab.axes(pts3d)
+        plots['data'] = pts3d
+
+        # Contour surfaces of GP mean
         mu, _ = m._raw_predict(xgrd)
-        zc = findZeros3D(xrng, mu.reshape((xrng.shape[0],) * 3))
-        plots['gpzerocontour'] = ax.plot_trisurf(zc[:,0], zc[:,1], zc[:,2],
-            color='green', alpha=0.2, linewidth=0)
+        xx, yy, zz = np.meshgrid(*tuple(xrng[:,i] for i in range(3)), indexing='ij')
+        mu = mu.reshape(xx.shape)
+        plots['gpmu'] = mlab.contour3d(xx, yy, zz, mu, figure=fig, colormap='jet',
+            contours=[-1, 0, 1], opacity = 0.3)
 
         self.fig = fig
         return plots
+
+    def save(self, fname):
+        mlab.view(azimuth=45, elevation=60, distance='auto', focalpoint='auto',
+            figure=self.fig)
+        mlab.savefig(fname + '-1.png', figure=self.fig)
+        print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '-1.png')
+
+        mlab.view(azimuth=225, elevation=120, distance='auto', focalpoint='auto',
+            figure=self.fig)
+        mlab.savefig(fname + '-2.png', figure=self.fig)
+        print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '-1.png')
+
+        mlab.close(scene=self.fig)
 
 
 class GPCPlotHD(GPCPlot):
@@ -191,22 +199,35 @@ class GPCPlotHD(GPCPlot):
         print 'TODO: HD'
 
 
-def getFrame(X, resolution=default_res):
+def getFrame(X, res=default_res):
     """
-    Calculate the optimal frame for plotting data points whose x coordinates
-    (x0, x1, ...) are given in matrix X.
+    Calculate the optimal frame for plotting data points.
 
+    Arguments:
+    X -- Data points as a N-by-D matrix, where N is the number of data points
+    and D is the number of dimensions in each data point
+
+    Keyword arguments:
+    res -- Number of subsamples in each dimension of X (default 256)
+
+    Returns:
+    xmin, xmax, xrng, xgrd
+    xmin -- 1-by-D matrix, the lower limit of plotting frame in each dimension
+    xmax -- 1-by-D matrix, the upper limit of plotting frame in each dimension
+    xrng -- res-by-D matrix, evenly spaced sampling points in each dimension
+    xgrd -- (res^D)-by-D matrix, the meshgrid stacked in the same way as X
     """
-    xmin, xmax = X.min(0), X.max(0)
+
+    xmin, xmax = X.min(axis=0), X.max(axis=0)
     margin = 0.2 * (xmax - xmin)
     xmin, xmax = xmin - margin, xmax + margin
 
     xdim = X.shape[1]
-    xrng = np.vstack(tuple(np.linspace(x1, x2, num=resolution) \
+    xrng = np.vstack(tuple(np.linspace(x1, x2, num=res) \
         for x1,x2 in zip(xmin,xmax))).T
 
-    grids = np.meshgrid(*tuple(xrng[:,i] for i in range(xdim)), indexing='ij')
-    xgrd = np.hstack(tuple(grids[i].reshape(-1,1) for i in range(xdim)))
+    xgrd = np.meshgrid(*tuple(xrng[:,i] for i in range(xdim)), indexing='ij')
+    xgrd = np.hstack(tuple(xgrd[i].reshape(-1,1) for i in range(xdim)))
 
     return xmin, xmax, xrng, xgrd
 
@@ -237,62 +258,3 @@ def plotGP(x, mu, lower=None, upper=None, ax=None,
             color=fillcolor)
 
     return plots
-
-
-def findZeros3D(X, Y):
-    """
-    Find zero crossings of function Y=f(X), where X is 3-dimensional.
-    X is a tuple of column vectors, corresponding to the sampling points in each
-    axis.
-
-    """
-    if isinstance(X, tuple) and len(X) == 3:
-        X0 = X[0].flatten()
-        X1 = X[1].flatten()
-        X2 = X[2].flatten()
-    elif isinstance(X, np.ndarray) and X.ndim == 2 and X.shape[1] == 3:
-        X0 = X[:,0]
-        X1 = X[:,1]
-        X2 = X[:,2]
-    else:
-        raise ValueError('Invalid input arguments.')
-
-    assert (X0.size, X1.size, X2.size) == Y.shape, \
-    'The shape of output Y does not match that of the input X.'
-
-    Z = np.empty((0, 3))
-
-    for i0,x0 in enumerate(X0):
-        for i1,x1 in enumerate(X1):
-            for x2 in findZeros1D(X2, Y[i0,i1,:]):
-                Z = np.vstack((Z, [x0, x1, x2]))
-
-    return Z
-
-def findZeros1D(X, Y):
-    """
-    Find zero crossings of univariate function Y=f(X).
-    X, Y are vectors of the same length.
-
-    """
-    X0 = X.flatten()
-    Y0 = Y.flatten()
-    assert X0.size == Y0.size, 'X, Y must be vectors of the same length.'
-
-    # sgn1: +ve -> 1, 0 ->  0, -ve -> -1
-    sgn1 = np.sign(Y0)
-    # sgn2: +ve -> 1, 0 -> -1, -ve -> -1
-    sgn2 = sgn1.copy()
-    sgn2[sgn1 == 0] = -1
-
-    sgndiff = np.hstack((np.diff(sgn2), 0))
-
-    # i1: the indices before a zero crossing
-    i1 = np.nonzero(sgndiff * sgn1)
-    # i2: the indices after a zero crossing
-    i2 = tuple(i + 1 for i in i1)
-
-    # Linear interpolation
-    zcx = X0[i1] - (X0[i2] - X0[i1]) / (Y0[i2] - Y0[i1]) * Y0[i1]
-
-    return zcx
