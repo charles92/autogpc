@@ -185,7 +185,6 @@ class GPCPlot3D(GPCPlot):
 class GPCPlotHD(GPCPlot):
     """
     Gaussian process classification plot: high (> 3) dimensional input
-
     """
 
     def __init__(self, model):
@@ -193,9 +192,59 @@ class GPCPlotHD(GPCPlot):
 
     def draw(self):
         print 'TODO: HD'
+        m = self.model
+        xnum, xdim = m.X.shape
+        fig, ax = plt.subplots()
+        plots = {}
+
+        # Data range
+        xmin, xmax, _ = getFrame(m.X, grid=False)
+        ax.axis(xmin=-0.1, xmax=xdim - 0.9, ymin=0, ymax=1)
+        ax.axis('off')
+
+        # Data axes
+        axmargin = 0.1 # Fraction of the range of the data on each axis
+        axmin = (1 - 5 * axmargin) / 7
+        axmax = 1 - axmin
+        dataaxes = []
+        for i in range(xdim):
+            dataaxis={}
+            dataaxis['bg'] = ax.axvline(x=i, ymin=axmin, ymax=axmax,
+                c='lightgray', lw=12)
+            dataaxis['axis'] = ax.axvline(x=i, ymin=axmin, ymax=axmax,
+                c='black', lw=2, marker='o', mfc='black', ms=5)
+            dataaxis['label'] = ax.text(i, axmin, '\nx' + str(i),
+                ha='center', va='top')
+            dataaxis['min'] = ax.text(i, axmin,
+                ' ' + str(xmin[i] + axmin * (xmax[i] - xmin[i])),
+                ha='left', va='center')
+            dataaxis['max'] = ax.text(i, axmax,
+                ' ' + str(xmin[i] + axmax * (xmax[i] - xmin[i])),
+                ha='left', va='center')
+            dataaxes.append(dataaxis)
+        plots['axes'] = dataaxes
+
+        # Data points
+        dataplots = []
+        Xn = (m.X - np.tile(xmin, (xnum, 1))) / np.tile(xmax - xmin, (xnum, 1))
+        ind = (m.Y == 0).flatten()
+        dataplots.append(ax.plot(np.arange(0, xdim).T, Xn[ind,:].T, linestyle='-',
+            color='blue', marker='o', mfc='blue', ms=2, mec='blue'))
+        ind = (m.Y == 1).flatten()
+        dataplots.append(ax.plot(np.arange(0, xdim).T, Xn[ind,:].T, linestyle='-',
+            color='red',  marker='o', mfc='red',  ms=2, mec='red'))
+        plots['data'] = dataplots
+
+        # Latent function
+        # mu, var = m._raw_predict(xgrd)
+        # stdev = np.sqrt(var)
+        # mu = m.likelihood.gp_link.transf(mu)
+
+        self.fig = fig
+        return plots
 
 
-def getFrame(X, res=default_res):
+def getFrame(X, res=default_res, grid=True):
     """
     Calculate the optimal frame for plotting data points.
 
@@ -222,10 +271,12 @@ def getFrame(X, res=default_res):
     xrng = np.vstack(tuple(np.linspace(x1, x2, num=res) \
         for x1,x2 in zip(xmin,xmax))).T
 
-    xgrd = np.meshgrid(*tuple(xrng[:,i] for i in range(xdim)), indexing='ij')
-    xgrd = np.hstack(tuple(xgrd[i].reshape(-1,1) for i in range(xdim)))
-
-    return xmin, xmax, xrng, xgrd
+    if grid:
+        xgrd = np.meshgrid(*tuple(xrng[:,i] for i in range(xdim)), indexing='ij')
+        xgrd = np.hstack(tuple(xgrd[i].reshape(-1,1) for i in range(xdim)))
+        return xmin, xmax, xrng, xgrd
+    else:
+        return xmin, xmax, xrng
 
 
 def plotGP(x, mu, lower=None, upper=None, ax=None,

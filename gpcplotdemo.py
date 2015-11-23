@@ -57,3 +57,22 @@ plotobj.save('test3d_before')
 m.optimize()
 plotobj.draw()
 plotobj.save('test3d_after')
+
+# 4D - Iris
+data = pods.datasets.iris()
+X = data['X']
+Y = data['Y']
+versi_ind = np.where(Y == 'Iris-versicolor')
+virgi_ind = np.where(Y == 'Iris-virginica')
+X = np.hstack((X[versi_ind,:], X[virgi_ind,:])).squeeze()
+Ynum = np.zeros(Y.size)
+Ynum[virgi_ind] = 1
+Ynum = np.hstack((Ynum[versi_ind], Ynum[virgi_ind])).reshape(X.shape[0], 1)
+m = GPy.models.GPClassification(X, Ynum, kernel=None)
+
+plotobj = gpcplt.create(m)
+plotobj.draw()
+plotobj.save('test4d_before')
+m.optimize()
+plotobj.draw()
+plotobj.save('test4d_after')
