@@ -177,7 +177,7 @@ class GPCPlot3D(GPCPlot):
         mlab.view(azimuth=225, elevation=120, distance='auto', focalpoint='auto',
             figure=self.fig)
         mlab.savefig(fname + '-2.png', figure=self.fig)
-        print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '-1.png')
+        print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '-2.png')
 
         mlab.close(scene=self.fig)
 
