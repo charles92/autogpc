@@ -220,7 +220,6 @@ class GPCPlotHD(GPCPlot):
         GPCPlot.__init__(self, model)
 
     def draw(self):
-        print 'TODO: HD'
         m = self.model
         xnum, xdim = m.X.shape
         fig, ax = plt.subplots()
@@ -264,10 +263,8 @@ class GPCPlotHD(GPCPlot):
             color='red',  marker='o', mfc='red',  ms=2, mec='red'))
         plots['data'] = dataplots
 
-        # Latent function
-        # mu, var = m._raw_predict(xgrd)
-        # stdev = np.sqrt(var)
-        # mu = m.likelihood.gp_link.transf(mu)
+        # Latent function: TODO
+        # What's a good way?
 
         self.fig = fig
         return plots
