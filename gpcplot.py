@@ -4,6 +4,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from mayavi import mlab
+from moviepy import editor as mpy
 
 # Number of samples drawn from the posterior GP, which are then plotted
 default_res = 256
@@ -169,13 +170,41 @@ class GPCPlot3D(GPCPlot):
         return plots
 
     def save(self, fname):
-        mlab.view(azimuth=45, elevation=60, distance='auto', focalpoint='auto',
-            figure=self.fig)
+        # Animation
+        def make_frame(t):
+            t = t % 8
+            if t < 3:
+                az = (45 + 60 * t) % 360
+                mlab.view(figure=self.fig, azimuth=az, elevation=60,
+                    distance='auto', focalpoint='auto')
+            elif t < 4:
+                el = (60 + 60 * (t - 3)) % 180
+                mlab.view(figure=self.fig, azimuth=225, elevation=el,
+                    distance='auto', focalpoint='auto')
+            elif t < 7:
+                az = (225 - 60 * (t - 4)) % 360
+                mlab.view(figure=self.fig, azimuth=az, elevation=120,
+                    distance='auto', focalpoint='auto')
+            else:
+                el = (120 - 60 * (t - 7)) % 180
+                mlab.view(figure=self.fig, azimuth=45, elevation=el,
+                    distance='auto', focalpoint='auto')
+            return mlab.screenshot(antialiased=True)
+        anim = mpy.VideoClip(make_frame, duration=8)
+        # anim.write_videofile(fname + '.mp4', fps=24, audio=False)
+        # print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.mp4')
+        anim.write_gif(fname + '.gif', fps=24)
+        print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.gif')
+
+        # Static view 1
+        mlab.view(figure=self.fig, azimuth=45, elevation=60,
+            distance='auto', focalpoint='auto',)
         mlab.savefig(fname + '-1.png', figure=self.fig)
         print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '-1.png')
 
-        mlab.view(azimuth=225, elevation=120, distance='auto', focalpoint='auto',
-            figure=self.fig)
+        # Static view 2
+        mlab.view(figure=self.fig, azimuth=225, elevation=120,
+            distance='auto', focalpoint='auto')
         mlab.savefig(fname + '-2.png', figure=self.fig)
         print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '-2.png')
 
