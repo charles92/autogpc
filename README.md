@@ -13,7 +13,10 @@ the [Machine Learning Group](http://mlg.eng.cam.ac.uk/) of
 
 ## Dependencies
 * [GPy](https://github.com/SheffieldML/GPy)
+* [Mayavi](http://docs.enthought.com/mayavi/mayavi/)
+* [MoviePy](http://zulko.github.io/moviepy/)
 
 ## People
 * Qiurui "Charles" He, *author*
-* [Prof. Zoubin Ghahramani](http://mlg.eng.cam.ac.uk/zoubin/), *advisor*
+* [Dr Christian Steinruecken](http://cstein.kings.cam.ac.uk/~chris/), *direct supervisor*
+* [Prof. Zoubin Ghahramani](http://mlg.eng.cam.ac.uk/zoubin/), *faculty supervisor*
