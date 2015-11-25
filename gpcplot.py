@@ -1,6 +1,12 @@
 # Copyright (c) 2015, Qiurui He
 # Department of Engineering, University of Cambridge
 
+# Set ETS_TOOLKIT to qt4 instead of wxPython. The latter crashes on Mac. Don't
+# know about stability on other platforms.
+# Testing platform: Mac OS X 10.11.1
+from traits.etsconfig.api import ETSConfig
+ETSConfig.toolkit = 'qt4'
+
 import numpy as np
 from matplotlib import pyplot as plt
 from mayavi import mlab
