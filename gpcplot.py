@@ -16,25 +16,27 @@ default_lvl = 7
 class GPCPlot(object):
     """
     Gaussian process classification plot
-
     """
 
-    def create(model):
+    def create(model, xlabels=None):
         input_dim = model.input_dim
         if input_dim == 1:
-            return GPCPlot1D(model)
+            return GPCPlot1D(model, xlabels)
         elif input_dim == 2:
-            return GPCPlot2D(model)
+            return GPCPlot2D(model, xlabels)
         elif input_dim == 3:
-            return GPCPlot3D(model)
+            return GPCPlot3D(model, xlabels)
         elif input_dim >= 4:
-            return GPCPlotHD(model)
+            return GPCPlotHD(model, xlabels)
         else:
             raise ValueError('The model must have >= 1 input dimension.')
     create = staticmethod(create)
 
-    def __init__(self, model):
+    def __init__(self, model, xlabels):
+        assert model is not None, 'GP model must not be None.'
+        assert xlabels is not None, 'Labels for X axes must not be None.'
         self.model = model
+        self.xlabels = xlabels
 
     def draw(self):
         raise NotImplementedError
@@ -48,11 +50,12 @@ class GPCPlot(object):
 class GPCPlot1D(GPCPlot):
     """
     Gaussian process classification plot: 1-dimensional input
-
     """
 
-    def __init__(self, model):
-        GPCPlot.__init__(self, model)
+    def __init__(self, model, xlabels=None):
+        if xlabels is None or len(xlabels) != 1:
+            xlabels = ('x',)
+        GPCPlot.__init__(self, model, xlabels)
 
     def draw(self):
         m = self.model
@@ -64,6 +67,8 @@ class GPCPlot1D(GPCPlot):
         ax.set_xlim(xmin, xmax)
         ax.set_ylim(ymin=-0.2, ymax=1.2)
         ax.set_yticks([0, 0.5, 1])
+        ax.set_xlabel(self.xlabels[0])
+        ax.set_ylabel('Probit(f)')
 
         # Data points
         plots['data'] = ax.plot(m.X, m.Y, label='Training data', linestyle='',
@@ -84,11 +89,12 @@ class GPCPlot1D(GPCPlot):
 class GPCPlot2D(GPCPlot):
     """
     Gaussian process classification plot: 2-dimensional input
-
     """
 
-    def __init__(self, model):
-        GPCPlot.__init__(self, model)
+    def __init__(self, model, xlabels=None):
+        if xlabels is None or len(xlabels) != 2:
+            xlabels = ('x1', 'x2')
+        GPCPlot.__init__(self, model, xlabels)
 
     def draw(self):
         m = self.model
@@ -99,6 +105,9 @@ class GPCPlot2D(GPCPlot):
         xmin, xmax, xrng, xgrd = getFrame(m.X)
         ax0.set_xlim(xmin[0], xmax[0])
         ax0.set_ylim(xmin[1], xmax[1])
+        ax0.set_xlabel(self.xlabels[0])
+        ax1.set_xlabel(self.xlabels[0])
+        ax0.set_ylabel(self.xlabels[1])
 
         # Data points
         plots['data1'] = ax0.scatter(m.X[:,0], m.X[:,1], c=m.Y, marker='o',
@@ -140,8 +149,10 @@ class GPCPlot3D(GPCPlot):
     Gaussian process classification plot: 3-dimensional input
     """
 
-    def __init__(self, model):
-        GPCPlot.__init__(self, model)
+    def __init__(self, model, xlabels=None):
+        if xlabels is None or len(xlabels) != 3:
+            xlabels = ('x1', 'x2', 'x3')
+        GPCPlot.__init__(self, model, xlabels)
 
     def draw(self):
         m = self.model
@@ -155,8 +166,9 @@ class GPCPlot3D(GPCPlot):
             extent=np.vstack((xmin, xmax)).T.flatten(), figure=fig,
             mode='sphere', vmin=-0.2, vmax=1.2, colormap='jet',
             scale_mode='none', scale_factor=0.05)
-        mlab.outline(pts3d)
-        mlab.axes(pts3d)
+        mlab.outline(pts3d, color=(0.5, 0.5, 0.5))
+        mlab.axes(pts3d, xlabel=self.xlabels[0], ylabel=self.xlabels[1],
+            zlabel=self.xlabels[2])
         plots['data'] = pts3d
 
         # Contour surfaces of GP mean
@@ -216,8 +228,10 @@ class GPCPlotHD(GPCPlot):
     Gaussian process classification plot: high (> 3) dimensional input
     """
 
-    def __init__(self, model):
-        GPCPlot.__init__(self, model)
+    def __init__(self, model, xlabels=None):
+        if xlabels is None or len(xlabels) != model.X.shape[1]:
+            xlabels = tuple(('x' + str(i+1)) for i in range(model.X.shape[1]))
+        GPCPlot.__init__(self, model, xlabels)
 
     def draw(self):
         m = self.model
@@ -241,7 +255,7 @@ class GPCPlotHD(GPCPlot):
                 c='lightgray', lw=12)
             dataaxis['axis'] = ax.axvline(x=i, ymin=axmin, ymax=axmax,
                 c='black', lw=2, marker='o', mfc='black', ms=5)
-            dataaxis['label'] = ax.text(i, axmin, '\nx' + str(i),
+            dataaxis['label'] = ax.text(i, axmin, '\n' + self.xlabels[i],
                 ha='center', va='top')
             dataaxis['min'] = ax.text(i, axmin,
                 ' ' + str(xmin[i] + axmin * (xmax[i] - xmin[i])),
@@ -310,8 +324,8 @@ def plotGP(x, mu, lower=None, upper=None, ax=None,
     meanwidth=2, edgewidth=0.25):
     """
     Make a generic 1-D GP plot on certain axes, with optional error band
-
     """
+
     if ax is None:
         _, ax = plt.subplots()
 
