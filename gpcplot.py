@@ -209,8 +209,8 @@ class GPCPlot3D(GPCPlot):
                     distance='auto', focalpoint='auto')
             return mlab.screenshot(antialiased=True)
         anim = mpy.VideoClip(make_frame, duration=8)
-        # anim.write_videofile(fname + '.mp4', fps=24, audio=False)
-        # print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.mp4')
+        anim.write_videofile(fname + '.mp4', fps=24, audio=False, codec='mpeg4')
+        print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.mp4')
         anim.write_gif(fname + '.gif', fps=24)
         print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.gif')
 
