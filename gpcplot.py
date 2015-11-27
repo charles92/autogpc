@@ -8,9 +8,12 @@ from traits.etsconfig.api import ETSConfig
 ETSConfig.toolkit = 'qt4'
 
 import numpy as np
-from matplotlib import pyplot as plt
-from mayavi import mlab
-from moviepy import editor as mpy
+import matplotlib
+matplotlib.rcParams['font.family'] = 'serif'
+matplotlib.rcParams['text.latex.unicode'] = True
+import matplotlib.pyplot as plt
+import mayavi.mlab as mlab
+import moviepy.editor as mpy
 
 # Number of samples drawn from the posterior GP, which are then plotted
 default_res = 256
@@ -24,25 +27,31 @@ class GPCPlot(object):
     Gaussian process classification plot
     """
 
-    def create(model, xlabels=None):
+    def create(model, xlabels=None, usetex=False):
         input_dim = model.input_dim
         if input_dim == 1:
-            return GPCPlot1D(model, xlabels)
+            return GPCPlot1D(model, xlabels=xlabels, usetex=usetex)
         elif input_dim == 2:
-            return GPCPlot2D(model, xlabels)
+            return GPCPlot2D(model, xlabels=xlabels, usetex=usetex)
         elif input_dim == 3:
-            return GPCPlot3D(model, xlabels)
+            return GPCPlot3D(model, xlabels=xlabels, usetex=usetex)
         elif input_dim >= 4:
-            return GPCPlotHD(model, xlabels)
+            return GPCPlotHD(model, xlabels=xlabels, usetex=usetex)
         else:
             raise ValueError('The model must have >= 1 input dimension.')
     create = staticmethod(create)
 
-    def __init__(self, model, xlabels):
+    def __init__(self, model, xlabels, usetex):
+        """
+        This constructor should not be called directly. All instantiation of
+        GPCPlot objects should be done via the factory method GPCPlot.create().
+        """
+
         assert model is not None, 'GP model must not be None.'
         assert xlabels is not None, 'Labels for X axes must not be None.'
         self.model = model
         self.xlabels = xlabels
+        self.usetex = usetex
 
     def draw(self):
         raise NotImplementedError
@@ -58,13 +67,15 @@ class GPCPlot1D(GPCPlot):
     Gaussian process classification plot: 1-dimensional input
     """
 
-    def __init__(self, model, xlabels=None):
+    def __init__(self, model, xlabels=None, usetex=False):
         if xlabels is None or len(xlabels) != 1:
-            xlabels = ('x',)
-        GPCPlot.__init__(self, model, xlabels)
+            xlabels = (r'$x$',)
+            usetex = True
+        GPCPlot.__init__(self, model, xlabels, usetex)
 
     def draw(self):
         m = self.model
+        plt.rc('text', usetex=True)
         fig, ax = plt.subplots()
         plots = {}
 
@@ -73,8 +84,10 @@ class GPCPlot1D(GPCPlot):
         ax.set_xlim(xmin, xmax)
         ax.set_ylim(ymin=-0.2, ymax=1.2)
         ax.set_yticks([0, 0.5, 1])
+        ax.set_ylabel(r'$\phi(f)$')
+        plt.rc('text', usetex=self.usetex)
         ax.set_xlabel(self.xlabels[0])
-        ax.set_ylabel('Probit(f)')
+        plt.rc('text', usetex=True)
 
         # Data points
         plots['data'] = ax.plot(m.X, m.Y, label='Training data', linestyle='',
@@ -97,13 +110,15 @@ class GPCPlot2D(GPCPlot):
     Gaussian process classification plot: 2-dimensional input
     """
 
-    def __init__(self, model, xlabels=None):
+    def __init__(self, model, xlabels=None, usetex=False):
         if xlabels is None or len(xlabels) != 2:
-            xlabels = ('x1', 'x2')
-        GPCPlot.__init__(self, model, xlabels)
+            xlabels = (r'$x_1$', r'$x_2$')
+            usetex = True
+        GPCPlot.__init__(self, model, xlabels, usetex)
 
     def draw(self):
         m = self.model
+        plt.rc('text', usetex=True)
         fig, (ax0, ax1) = plt.subplots(nrows=1, ncols=2, sharex=True, sharey=True)
         plots = {}
 
@@ -111,9 +126,11 @@ class GPCPlot2D(GPCPlot):
         xmin, xmax, xrng, xgrd = getFrame(m.X)
         ax0.set_xlim(xmin[0], xmax[0])
         ax0.set_ylim(xmin[1], xmax[1])
+        plt.rc('text', usetex=self.usetex)
         ax0.set_xlabel(self.xlabels[0])
         ax1.set_xlabel(self.xlabels[0])
         ax0.set_ylabel(self.xlabels[1])
+        plt.rc('text', usetex=True)
 
         # Data points
         plots['data1'] = ax0.scatter(m.X[:,0], m.X[:,1], c=m.Y, marker='o',
@@ -155,10 +172,12 @@ class GPCPlot3D(GPCPlot):
     Gaussian process classification plot: 3-dimensional input
     """
 
-    def __init__(self, model, xlabels=None):
+    def __init__(self, model, xlabels=None, usetex=False):
         if xlabels is None or len(xlabels) != 3:
             xlabels = ('x1', 'x2', 'x3')
-        GPCPlot.__init__(self, model, xlabels)
+        assert not usetex, 'Warning: usetex is not supported for 3-D plots. \
+        Using False instead.'
+        GPCPlot.__init__(self, model, xlabels, False)
 
     def draw(self):
         m = self.model
@@ -234,14 +253,16 @@ class GPCPlotHD(GPCPlot):
     Gaussian process classification plot: high (> 3) dimensional input
     """
 
-    def __init__(self, model, xlabels=None):
+    def __init__(self, model, xlabels=None, usetex=False):
         if xlabels is None or len(xlabels) != model.X.shape[1]:
-            xlabels = tuple(('x' + str(i+1)) for i in range(model.X.shape[1]))
-        GPCPlot.__init__(self, model, xlabels)
+            xlabels = tuple((r'$x_{' + str(i+1) + r'}$') for i in range(model.X.shape[1]))
+            usetex = True
+        GPCPlot.__init__(self, model, xlabels, usetex)
 
     def draw(self):
         m = self.model
         xnum, xdim = m.X.shape
+        plt.rc('text', usetex=True)
         fig, ax = plt.subplots()
         plots = {}
 
@@ -261,13 +282,15 @@ class GPCPlotHD(GPCPlot):
                 c='lightgray', lw=12)
             dataaxis['axis'] = ax.axvline(x=i, ymin=axmin, ymax=axmax,
                 c='black', lw=2, marker='o', mfc='black', ms=5)
+            plt.rc('text', usetex=self.usetex)
             dataaxis['label'] = ax.text(i, axmin, '\n' + self.xlabels[i],
                 ha='center', va='top')
+            plt.rc('text', usetex=True)
             dataaxis['min'] = ax.text(i, axmin,
-                ' ' + str(xmin[i] + axmin * (xmax[i] - xmin[i])),
+                r'\hspace{4mm}' + str(xmin[i] + axmin * (xmax[i] - xmin[i])),
                 ha='left', va='center')
             dataaxis['max'] = ax.text(i, axmax,
-                ' ' + str(xmin[i] + axmax * (xmax[i] - xmin[i])),
+                r'\hspace{4mm}' + str(xmin[i] + axmax * (xmax[i] - xmin[i])),
                 ha='left', va='center')
             dataaxes.append(dataaxis)
         plots['axes'] = dataaxes
