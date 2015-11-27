@@ -162,7 +162,7 @@ class GPCPlot3D(GPCPlot):
 
     def draw(self):
         m = self.model
-        fig = mlab.figure(bgcolor=(1, 1, 1), fgcolor=(0, 0, 0), size=(600, 600))
+        fig = mlab.figure(bgcolor=(1, 1, 1), fgcolor=(0, 0, 0), size=(600, 601))
         plots = {}
 
         xmin, xmax, xrng, xgrd = getFrame(m.X, res=32)
@@ -209,7 +209,7 @@ class GPCPlot3D(GPCPlot):
                     distance='auto', focalpoint='auto')
             return mlab.screenshot(antialiased=True)
         anim = mpy.VideoClip(make_frame, duration=8)
-        anim.write_videofile(fname + '.mp4', fps=24, audio=False, codec='mpeg4')
+        anim.write_videofile(fname + '.mp4', fps=24, audio=False, codec='libx264')
         print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.mp4')
         anim.write_gif(fname + '.gif', fps=24)
         print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.gif')
