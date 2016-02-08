@@ -4,6 +4,7 @@
 import numpy as np
 import flexible_function as ff      # GPSS kernel definitions
 import GPy.kern as GPyKern          # GPy kernel definitions
+import grammar                      # GPSS kernel expansion
 
 
 class GPCKernel(object):
@@ -35,48 +36,73 @@ class GPCKernel(object):
     https://github.com/jamesrobertlloyd/gpss-research
     """
 
-    def __init__(self, gpssKernel):
+    def __init__(self, gpssKernel, maxDim, depth):
         self.kernel = gpssKernel
+        self.maxdim = maxDim
+        self.depth = depth
 
     def expand(self):
-        kernels = []
+        """
+        Expand this kernel using grammar defined in grammar.py.
+
+        :param kernel: a GPSS kernel as defined in flexible_function.py
+        :param ndim: the number of input dimensions
+        :returns: list of GPCKernel resulting from the expansion
+        """
+        g = grammar.MultiDGrammar(self.maxdim, base_kernels='SE', rules=None)
+        kernels = grammar.expand(self.kernel, g)
+        # kernels = [k.simplified() for k in kernels]
+        kernels = [k.canonical() for k in kernels]
+        kernels = ff.remove_duplicates(kernels)
+        kernels = [k for k in kernels if not isinstance(k, ff.NoneKernel)]
+        kernels = [GPCKernel(k, self.maxdim, self.depth + 1) for k in kernels]
         return kernels
+
+    def getGPyKernel(self):
+        """
+        Convert this GPCKernel to GPy kernel.
+
+        :returns: an object of type GPy.kern.Kern
+        """
+        return gpss2gpy(self.kernel)
 
     def train(self):
         return
 
 
-def gpss2gpy(gpssKernel):
+def gpss2gpy(kernel):
     """
-    Convert a GPSS kernel to a GPy kernel.
+    Convert a GPSS kernel to a GPy kernel recursively.
 
     Support only:
     1) 1-D squared exponential kernels
     2) 1-D periodic kernels
     3) sum of kernels
     4) product of kernels
-    """
 
-    if isinstance(gpssKernel, ff.SqExpKernel):
+    :param kernel: a GPSS kernel as defined in flexible_function.py
+    :returns: an object of type GPy.kern.Kern
+    """
+    if isinstance(kernel, ff.SqExpKernel):
         ndim = 1
-        sf2 = gpssKernel.sf ** 2
-        ls = gpssKernel.lengthscale
-        dims = np.array([gpssKernel.dimension])
+        sf2 = kernel.sf ** 2
+        ls = kernel.lengthscale
+        dims = np.array([kernel.dimension])
         return GPyKern.RBF(ndim, variance=sf2, lengthscale=ls, active_dims=dims)
 
-    elif isinstance(gpssKernel, ff.PeriodicKernel):
+    elif isinstance(kernel, ff.PeriodicKernel):
         ndim = 1
-        sf2 = gpssKernel.sf ** 2
-        wl = gpssKernel.period
-        ls = gpssKernel.lengthscale
-        dims = np.array([gpssKernel.dimension])
+        sf2 = kernel.sf ** 2
+        wl = kernel.period
+        ls = kernel.lengthscale
+        dims = np.array([kernel.dimension])
         return GPyKern.StdPeriodic(ndim, variance=sf2, wavelength=wl, lengthscale=ls, active_dims=dims)
 
-    elif isinstance(gpssKernel, ff.SumKernel):
-        return GPyKern.Add(map(gpss2gpy, gpssKernel.operands))
+    elif isinstance(kernel, ff.SumKernel):
+        return GPyKern.Add(map(gpss2gpy, kernel.operands))
 
-    elif isinstance(gpssKernel, ff.ProductKernel):
-        return GPyKern.Prod(map(gpss2gpy, gpssKernel.operands))
+    elif isinstance(kernel, ff.ProductKernel):
+        return GPyKern.Prod(map(gpss2gpy, kernel.operands))
 
     else:
         raise NotImplementedError("Cannot translate kernel of type " + type(gpssKernel).__name__)
