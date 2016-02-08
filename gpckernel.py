@@ -36,10 +36,18 @@ class GPCKernel(object):
     https://github.com/jamesrobertlloyd/gpss-research
     """
 
-    def __init__(self, gpssKernel, maxDim, depth):
+    def __init__(self, gpssKernel, numDims, depth):
+        """
+        :param gpssKernel: a GPSS kernel as defined in flexible_function.py
+        :param numDims: total number of dimensions in input space
+        :param depth: depth of the current node in the search tree (root is 0)
+        """
+        # TODO: add reference to input data points
         self.kernel = gpssKernel
-        self.maxdim = maxDim
+        self.ndims = numDims
         self.depth = depth
+        self.model = None
+        self.isSparse = None
 
     def expand(self):
         """
@@ -49,13 +57,13 @@ class GPCKernel(object):
         :param ndim: the number of input dimensions
         :returns: list of GPCKernel resulting from the expansion
         """
-        g = grammar.MultiDGrammar(self.maxdim, base_kernels='SE', rules=None)
+        g = grammar.MultiDGrammar(self.ndims, base_kernels='SE', rules=None)
         kernels = grammar.expand(self.kernel, g)
         # kernels = [k.simplified() for k in kernels]
         kernels = [k.canonical() for k in kernels]
         kernels = ff.remove_duplicates(kernels)
         kernels = [k for k in kernels if not isinstance(k, ff.NoneKernel)]
-        kernels = [GPCKernel(k, self.maxdim, self.depth + 1) for k in kernels]
+        kernels = [GPCKernel(k, self.ndims, self.depth + 1) for k in kernels]
         return kernels
 
     def getGPyKernel(self):
@@ -67,7 +75,16 @@ class GPCKernel(object):
         return gpss2gpy(self.kernel)
 
     def train(self):
-        return
+        # TODO: unfinished
+        self.model = GPy.models.GPClassification(X, Y, kernel=self.getGPyKernel())
+        self.isSparse = False
+        self.model.optimize()
+
+    def trainSparse(self):
+        # TODO: unfinished
+        self.model = GPy.models.SparseGPClassification(X, Y, kernel=self.getGPyKernel(), num_inducing=20)
+        self.isSparse = True
+        self.model.optimize()
 
 
 def gpss2gpy(kernel):
