@@ -5,7 +5,7 @@ import numpy as np
 import pods
 from gpcdata import GPCData
 
-# 2D
+# 2D, default axis naming
 data = pods.datasets.crescent_data(seed=500)
 X = data['X']
 Y = data['Y']
