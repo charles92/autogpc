@@ -3,8 +3,9 @@
 
 import numpy as np
 import flexible_function as ff      # GPSS kernel definitions
-import GPy.kern as GPyKern          # GPy kernel definitions
 import grammar                      # GPSS kernel expansion
+import GPy
+from gpcplot import GPCPlot
 
 
 class GPCKernel(object):
@@ -36,15 +37,14 @@ class GPCKernel(object):
     https://github.com/jamesrobertlloyd/gpss-research
     """
 
-    def __init__(self, gpssKernel, numDims, depth):
+    def __init__(self, gpssKernel, data, depth):
         """
         :param gpssKernel: a GPSS kernel as defined in flexible_function.py
-        :param numDims: total number of dimensions in input space
+        :param data: object of type GPCData which the kernel works on
         :param depth: depth of the current node in the search tree (root is 0)
         """
-        # TODO: add reference to input data points
         self.kernel = gpssKernel
-        self.ndims = numDims
+        self.data = data
         self.depth = depth
         self.model = None
         self.isSparse = None
@@ -52,39 +52,56 @@ class GPCKernel(object):
     def expand(self):
         """
         Expand this kernel using grammar defined in grammar.py.
-
-        :param kernel: a GPSS kernel as defined in flexible_function.py
-        :param ndim: the number of input dimensions
         :returns: list of GPCKernel resulting from the expansion
         """
-        g = grammar.MultiDGrammar(self.ndims, base_kernels='SE', rules=None)
+        ndim = self.data.getDim()
+        g = grammar.MultiDGrammar(ndim, base_kernels='SE', rules=None)
         kernels = grammar.expand(self.kernel, g)
         # kernels = [k.simplified() for k in kernels]
         kernels = [k.canonical() for k in kernels]
         kernels = ff.remove_duplicates(kernels)
         kernels = [k for k in kernels if not isinstance(k, ff.NoneKernel)]
-        kernels = [GPCKernel(k, self.ndims, self.depth + 1) for k in kernels]
+        kernels = [GPCKernel(k, self.data, self.depth + 1) for k in kernels]
         return kernels
 
     def getGPyKernel(self):
         """
         Convert this GPCKernel to GPy kernel.
-
         :returns: an object of type GPy.kern.Kern
         """
         return gpss2gpy(self.kernel)
 
     def train(self):
-        # TODO: unfinished
-        self.model = GPy.models.GPClassification(X, Y, kernel=self.getGPyKernel())
+        """
+        Train a GP classification model using all data points
+        """
+        self.model = GPy.models.GPClassification( \
+            self.data.X, \
+            self.data.Y, \
+            kernel=self.getGPyKernel())
         self.isSparse = False
         self.model.optimize()
 
-    def trainSparse(self):
-        # TODO: unfinished
-        self.model = GPy.models.SparseGPClassification(X, Y, kernel=self.getGPyKernel(), num_inducing=20)
+    def trainSparse(self, num_inducing=20):
+        """
+        Train a sparse GP classification model using inducing points
+        """
+        self.model = GPy.models.SparseGPClassification( \
+            self.data.X, \
+            self.data.Y, \
+            kernel=self.getGPyKernel(), \
+            num_inducing=num_inducing)
         self.isSparse = True
         self.model.optimize()
+
+    def draw(self, filename):
+        """
+        Plot the model and data points
+        :param file: the output file (path and) name, without extension
+        """
+        plot = GPCPlot.create(self.model, self.data.XLabel, usetex=True)
+        plot.draw()
+        plot.save(filename)
 
 
 def gpss2gpy(kernel):
@@ -105,7 +122,7 @@ def gpss2gpy(kernel):
         sf2 = kernel.sf ** 2
         ls = kernel.lengthscale
         dims = np.array([kernel.dimension])
-        return GPyKern.RBF(ndim, variance=sf2, lengthscale=ls, active_dims=dims)
+        return GPy.kern.RBF(ndim, variance=sf2, lengthscale=ls, active_dims=dims)
 
     elif isinstance(kernel, ff.PeriodicKernel):
         ndim = 1
@@ -113,13 +130,13 @@ def gpss2gpy(kernel):
         wl = kernel.period
         ls = kernel.lengthscale
         dims = np.array([kernel.dimension])
-        return GPyKern.StdPeriodic(ndim, variance=sf2, wavelength=wl, lengthscale=ls, active_dims=dims)
+        return GPy.kern.StdPeriodic(ndim, variance=sf2, wavelength=wl, lengthscale=ls, active_dims=dims)
 
     elif isinstance(kernel, ff.SumKernel):
-        return GPyKern.Add(map(gpss2gpy, kernel.operands))
+        return GPy.kern.Add(map(gpss2gpy, kernel.operands))
 
     elif isinstance(kernel, ff.ProductKernel):
-        return GPyKern.Prod(map(gpss2gpy, kernel.operands))
+        return GPy.kern.Prod(map(gpss2gpy, kernel.operands))
 
     else:
         raise NotImplementedError("Cannot translate kernel of type " + type(gpssKernel).__name__)
