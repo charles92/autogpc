@@ -27,6 +27,7 @@ class GPCPlot(object):
     Gaussian process classification plot
     """
 
+    @staticmethod
     def create(model, xlabels=None, usetex=False):
         input_dim = model.input_dim
         if input_dim == 1:
@@ -39,7 +40,6 @@ class GPCPlot(object):
             return GPCPlotHD(model, xlabels=xlabels, usetex=usetex)
         else:
             raise ValueError('The model must have >= 1 input dimension.')
-    create = staticmethod(create)
 
     def __init__(self, model, xlabels, usetex):
         """
