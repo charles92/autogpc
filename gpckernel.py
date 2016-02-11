@@ -37,7 +37,7 @@ class GPCKernel(object):
     https://github.com/jamesrobertlloyd/gpss-research
     """
 
-    def __init__(self, gpssKernel, data, depth):
+    def __init__(self, gpssKernel, data, depth=0):
         """
         :param gpssKernel: a GPSS kernel as defined in flexible_function.py
         :param data: object of type GPCData which the kernel works on
@@ -49,13 +49,13 @@ class GPCKernel(object):
         self.model = None
         self.isSparse = None
 
-    def expand(self):
+    def expand(self, base_kernels='SE'):
         """
         Expand this kernel using grammar defined in grammar.py.
         :returns: list of GPCKernel resulting from the expansion
         """
         ndim = self.data.getDim()
-        g = grammar.MultiDGrammar(ndim, base_kernels='SE', rules=None)
+        g = grammar.MultiDGrammar(ndim, base_kernels=base_kernels, rules=None)
         kernels = grammar.expand(self.kernel, g)
         # kernels = [k.simplified() for k in kernels]
         kernels = [k.canonical() for k in kernels]
@@ -63,13 +63,6 @@ class GPCKernel(object):
         kernels = [k for k in kernels if not isinstance(k, ff.NoneKernel)]
         kernels = [GPCKernel(k, self.data, self.depth + 1) for k in kernels]
         return kernels
-
-    def getGPyKernel(self):
-        """
-        Convert this GPCKernel to GPy kernel.
-        :returns: an object of type GPy.kern.Kern
-        """
-        return gpss2gpy(self.kernel)
 
     def train(self):
         """
@@ -102,6 +95,30 @@ class GPCKernel(object):
         plot = GPCPlot.create(self.model, self.data.XLabel, usetex=True)
         plot.draw()
         plot.save(filename)
+
+    def getDepth(self):
+        """
+        :returns: depth of this kernel in the search tree
+        """
+        return self.depth
+
+    def getNLML(self):
+        """
+        :returns: negative log marginal likelihood
+        """
+        if self.model is not None:
+            return -self.model.log_likelihood()
+        elif isinstance(self.kernel, ff.NoneKernel):
+            return float("inf")
+        else:
+            raise RuntimeError("GPy model not yet created and optimised.")
+
+    def getGPyKernel(self):
+        """
+        Convert this GPCKernel to GPy kernel.
+        :returns: an object of type GPy.kern.Kern
+        """
+        return gpss2gpy(self.kernel)
 
 
 def gpss2gpy(kernel):
