@@ -12,6 +12,7 @@ Y = data['Y']
 Y[Y.flatten() == -1] = 0
 d = GPCData(X, Y)
 print d
+print d.getDataShape()
 
 # 4D - Iris dataset
 data = pods.datasets.iris()

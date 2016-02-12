@@ -51,3 +51,16 @@ class GPCData(object):
 
 	def getDim(self):
 		return self.X.shape[1]
+
+	def getDataShape(self):
+		xsd = np.std(self.X, axis=0).flatten().tolist()
+		xmin = np.amin(self.X, axis=0).flatten().tolist()
+		xmax = np.amax(self.X, axis=0).flatten().tolist()
+		ysd = np.std(self.Y)
+		return {
+			'x_sd':  xsd,
+			'x_min': xmin,
+			'x_max': xmax,
+			'y_sd':  ysd
+		}
+

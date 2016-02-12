@@ -68,6 +68,7 @@ class GPCKernel(object):
         """
         Train a GP classification model using all data points
         """
+        self.kernel.initialise_params(data_shape=self.data.getDataShape())
         self.model = GPy.models.GPClassification( \
             self.data.X, \
             self.data.Y, \
@@ -79,6 +80,7 @@ class GPCKernel(object):
         """
         Train a sparse GP classification model using inducing points
         """
+        self.kernel.initialise_params(data_shape=self.data.getDataShape())
         self.model = GPy.models.SparseGPClassification( \
             self.data.X, \
             self.data.Y, \
