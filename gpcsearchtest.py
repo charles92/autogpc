@@ -13,6 +13,8 @@ Y = data['Y']
 Y[Y.flatten() == -1] = 0
 d = GPCData(X, Y)
 
-search = GPCSearch(data=d)
-for k in search.search():
-	print k.kernel
+search = GPCSearch(data=d, max_depth=5, beam_width=2)
+results = search.search()
+print "\n\nResults:"
+for k in results:
+	print k

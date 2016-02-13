@@ -49,6 +49,14 @@ class GPCKernel(object):
         self.model = None
         self.isSparse = None
 
+    def __repr__(self):
+        kernel_str = self.kernel.pretty_print()
+        if isinstance(kernel_str, Exception):
+            kernel_str = "No Expression"
+        return 'GPCKernel: depth = %d, NLML = %f\n' % \
+               (self.depth, self.getNLML()) + \
+               kernel_str
+
     def expand(self, base_kernels='SE'):
         """
         Expand this kernel using grammar defined in grammar.py.
@@ -110,10 +118,8 @@ class GPCKernel(object):
         """
         if self.model is not None:
             return -self.model.log_likelihood()
-        elif isinstance(self.kernel, ff.NoneKernel):
-            return float("inf")
         else:
-            raise RuntimeError("GPy model not yet created and optimised.")
+            return float("inf")
 
     def getGPyKernel(self):
         """
