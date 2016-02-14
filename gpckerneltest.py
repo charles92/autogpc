@@ -57,4 +57,31 @@ for k in kern.expand():
 # Train non-sparse model
 kern = gpckernel.GPCKernel(k3, data, 1)
 kern.train()
-kern.draw('gpckerneltest')
+kern.draw('imgs/gpckerneltest')
+
+# Kernel equality
+print "\n\nKernel equality:"
+k1 = ff.NoneKernel()
+k2 = ff.NoneKernel()
+assert gpckernel.isKernelEqual(k1, k2)
+
+k2 = ff.SqExpKernel(dimension=0, lengthscale=1.5, sf=0.5)
+assert not gpckernel.isKernelEqual(k1, k2)
+
+k1 = ff.SqExpKernel(dimension=0, lengthscale=1, sf=0.5)
+assert gpckernel.isKernelEqual(k1, k2)
+assert not gpckernel.isKernelEqual(k1, k2, compare_params=True)
+assert gpckernel.isKernelEqual(k1, k1.copy(), compare_params=True)
+
+k2 = ff.SqExpKernel(dimension=1, lengthscale=1, sf=0.5)
+assert not gpckernel.isKernelEqual(k1, k2)
+
+k1 = ff.SqExpKernel(dimension=0, lengthscale=1, sf=0.5)
+k2 = ff.SqExpKernel(dimension=1, lengthscale=1, sf=0.5)
+k3 = ff.SumKernel([k1, k2])
+k4 = ff.SumKernel([k2, k1])
+assert gpckernel.isKernelEqual(k3, k4)
+k4 = ff.SumKernel([k1, k1])
+assert not gpckernel.isKernelEqual(k3, k4)
+
+print "Passed!"

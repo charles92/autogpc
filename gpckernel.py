@@ -165,3 +165,63 @@ def gpss2gpy(kernel):
 
     else:
         raise NotImplementedError("Cannot translate kernel of type " + type(gpssKernel).__name__)
+
+
+def isKernelEqual(k1, k2, compare_params=False, use_canonical=True):
+    """
+    Compare two GPSS kernels recursively.
+
+    Support only:
+    1) 1-D squared exponential kernels
+    2) 1-D periodic kernels
+    3) sum of kernels
+    4) product of kernels
+    5) NoneKernel
+
+    :param k1: GPSS kernel for comparison
+    :param k2: another GPSS kernel for comparison
+    :param compare_params: compare functional form only if False (default),
+    otherwise compare hyperparameters as well
+    :param use_canonical: convert kernels to canonical form before comparison if
+    True (default)
+    :returns: True if two kernels are equal, False otherwise
+    """
+    assert isinstance(k1, ff.Kernel), "k1 must be of type flexible_function.Kernel"
+    assert isinstance(k2, ff.Kernel), "k2 must be of type flexible_function.Kernel"
+
+    if use_canonical:
+        k1 = k1.canonical()
+        k2 = k2.canonical()
+
+    if isinstance(k1, ff.NoneKernel):
+        return isinstance(k2, ff.NoneKernel)
+
+    elif isinstance(k1, ff.SqExpKernel):
+        result = isinstance(k2, ff.SqExpKernel) and k1.dimension == k2.dimension
+        if compare_params:
+            result = result and np.array_equal(k1.param_vector, k2.param_vector)
+        return result
+
+    elif isinstance(k1, ff.PeriodicKernel):
+        result = isinstance(k2, ff.PeriodicKernel) and k1.dimension == k2.dimension
+        if compare_params:
+            result = result and np.array_equal(k1.param_vector, k2.param_vector)
+        return result
+
+    elif isinstance(k1, ff.SumKernel):
+        result = isinstance(k2, ff.SumKernel) and len(k1.operands) == len(k2.operands)
+        result = result and \
+            all([isKernelEqual(o1, o2, compare_params=compare_params, use_canonical=False) \
+            for (o1, o2) in zip(k1.operands, k2.operands)])
+        return result
+
+    elif isinstance(k1, ff.ProductKernel):
+        result = isinstance(k2, ff.ProductKernel) and len(k1.operands) == len(k2.operands)
+        result = result and \
+            all([isKernelEqual(o1, o2, compare_params=compare_params, use_canonical=False) \
+            for (o1, o2) in zip(k1.operands, k2.operands)])
+        return result
+
+    else:
+        raise NotImplementedError("Cannot compare kernels of type " \
+            + type(k1).__name__ + " and " + type(k2).__name__)
