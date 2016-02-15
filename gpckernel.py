@@ -59,6 +59,18 @@ class GPCKernel(object):
                (self.depth, self.getNLML()) + \
                kernel_str
 
+    def equals(self, other, strict=False, canonical=True):
+        """
+        Check if this kernel is equivalent to another kernel.
+
+        :param other: kernel of type GPCKernel which is to be compared
+        :param strict: check the equality of hyperparameters; default to False
+        :param canonical: convert the kernel to canonical form before comparison;
+        default to True
+        :returns: True if the two kernels are equivalent, False otherwise
+        """
+        return isKernelEqual(self.kernel, other.kernel, compare_params=strict, use_canonical=canonical)
+
     def expand(self, base_kernels='SE'):
         """
         Expand this kernel using grammar defined in grammar.py.
