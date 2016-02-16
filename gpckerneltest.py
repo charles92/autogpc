@@ -49,6 +49,14 @@ getGPyKernelTest(k5, data)
 k6 = ff.ProductKernel([k1, k3])
 getGPyKernelTest(k6, data)
 
+# gpy2gpss
+print "\n\nGPy2GPSS:"
+kk1 = GPyKern.RBF(1, variance=2, lengthscale=3, active_dims=np.array([3]))
+kk2 = GPyKern.RBF(1, variance=4, lengthscale=6, active_dims=np.array([1]))
+kks = GPyKern.Add([kk1, kk2])
+print kks
+print gpckernel.gpy2gpss(kks).pretty_print()
+
 # Expansion
 kern = gpckernel.GPCKernel(k1, data, 1)
 print "\n\nBefore expansion:"

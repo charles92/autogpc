@@ -149,8 +149,8 @@ def gpss2gpy(kernel):
     Support only:
     1) 1-D squared exponential kernels
     2) 1-D periodic kernels
-    3) sum of kernels
-    4) product of kernels
+    3) sum kernels
+    4) product kernels
 
     :param kernel: a GPSS kernel as defined in flexible_function.py
     :returns: an object of type GPy.kern.Kern
@@ -177,7 +177,43 @@ def gpss2gpy(kernel):
         return GPy.kern.Prod(map(gpss2gpy, kernel.operands))
 
     else:
-        raise NotImplementedError("Cannot translate kernel of type " + type(gpssKernel).__name__)
+        raise NotImplementedError("Cannot translate kernel of type " + type(kernel).__name__)
+
+
+def gpy2gpss(kernel):
+    """
+    Convert a GPy kernel to a GPSS kernel recursively.
+
+    Support only:
+    1) 1-D squared exponential kernels
+    2) 1-D periodic kernels
+    3) sum kernels
+    4) product kernels
+
+    :param kernel: a GPSS kernel as defined in flexible_function.py
+    :returns: an object of type GPy.kern.Kern
+    """
+    if isinstance(kernel, GPy.kern.RBF):
+        sf = np.sqrt(kernel.variance)[0]
+        ls = kernel.lengthscale[0]
+        dim = kernel.active_dims[0]
+        return ff.SqExpKernel(dimension=dim, lengthscale=ls, sf=sf)
+
+    elif isinstance(kernel, GPy.kern.StdPeriodic):
+        sf = np.sqrt(kernel.variance)[0]
+        ls = kernel.lengthscales[0]
+        per = kernel.wavelengths[0]
+        dim = kernel.active_dims[0]
+        return ff.PeriodicKernel(dimension=dim, lengthscale=ls, period=per, sf=sf)
+
+    elif isinstance(kernel, GPy.kern.Add):
+        return ff.SumKernel(map(gpy2gpss, kernel.parts))
+
+    elif isinstance(kernel, GPy.kern.Prod):
+        return ff.ProductKernel(map(gpy2gpss, kernel.parts))
+
+    else:
+        raise NotImplementedError("Cannot translate kernel of type " + type(kernel).__name__)
 
 
 def isKernelEqual(k1, k2, compare_params=False, use_canonical=True):
