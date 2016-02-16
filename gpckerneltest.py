@@ -51,8 +51,11 @@ getGPyKernelTest(k6, data)
 
 # Expansion
 kern = gpckernel.GPCKernel(k1, data, 1)
+print "\n\nBefore expansion:"
+print k1.pretty_print()
+print "\nAfter expansion:"
 for k in kern.expand():
-    print k.kernel
+    print k.kernel.pretty_print()
 
 # Train non-sparse model
 kern = gpckernel.GPCKernel(k3, data, 1)

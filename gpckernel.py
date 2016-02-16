@@ -79,8 +79,9 @@ class GPCKernel(object):
         ndim = self.data.getDim()
         g = grammar.MultiDGrammar(ndim, base_kernels=base_kernels, rules=None)
         kernels = grammar.expand(self.kernel, g)
-        # kernels = [k.simplified() for k in kernels]
         kernels = [k.canonical() for k in kernels]
+        map(lambda k: k.initialise_params(data_shape=self.data.getDataShape()), kernels)
+        kernels = [k.simplified() for k in kernels]
         kernels = ff.remove_duplicates(kernels)
         kernels = [k for k in kernels if not isinstance(k, ff.NoneKernel)]
         kernels = [GPCKernel(k, self.data, self.depth + 1) for k in kernels]
