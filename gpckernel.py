@@ -155,6 +155,8 @@ def gpss2gpy(kernel):
     :param kernel: a GPSS kernel as defined in flexible_function.py
     :returns: an object of type GPy.kern.Kern
     """
+    assert isinstance(kernel, ff.Kernel), "kernel must be of type flexible_function.Kernel"
+
     if isinstance(kernel, ff.SqExpKernel):
         ndim = 1
         sf2 = kernel.sf ** 2
@@ -193,6 +195,8 @@ def gpy2gpss(kernel):
     :param kernel: a GPSS kernel as defined in flexible_function.py
     :returns: an object of type GPy.kern.Kern
     """
+    assert isinstance(kernel, GPy.kern.Kern), "kernel must be of type GPy.kern.Kern"
+
     if isinstance(kernel, GPy.kern.RBF):
         sf = np.sqrt(kernel.variance)[0]
         ls = kernel.lengthscale[0]
