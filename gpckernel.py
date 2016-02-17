@@ -87,6 +87,15 @@ class GPCKernel(object):
         kernels = [GPCKernel(k, self.data, self.depth + 1) for k in kernels]
         return kernels
 
+    def reset(self):
+        """
+        Reset the kernel hyperparameters to random values.
+        """
+        self.kernel = removeKernelParams(self.kernel)
+        if not isinstance(self.kernel, ff.NoneKernel):
+            self.kernel.initialise_params(data_shape=self.data.getDataShape())
+
+
     def train(self):
         """
         Train a GP classification model using all data points
@@ -217,6 +226,33 @@ def gpy2gpss(kernel):
 
     elif isinstance(kernel, GPy.kern.Prod):
         return ff.ProductKernel(map(gpy2gpss, kernel.parts))
+
+    else:
+        raise NotImplementedError("Cannot translate kernel of type " + type(kernel).__name__)
+
+
+def removeKernelParams(kernel):
+    """
+    Remove hyperparameters of a GPSS kernel and reset them to None.
+
+    :returns: a GPSS kernel without parameter initialisation
+    """
+    assert isinstance(kernel, ff.Kernel), "kernel must be of type flexible_function.Kernel"
+
+    if isinstance(kernel, ff.SqExpKernel):
+        return ff.SqExpKernel(dimension=kernel.dimension)
+
+    elif isinstance(kernel, ff.PeriodicKernel):
+        return ff.PeriodicKernel(dimension=kernel.dimension)
+
+    elif isinstance(kernel, ff.SumKernel):
+        return ff.SumKernel(map(removeParams, kernel.operands))
+
+    elif isinstance(kernel, ff.ProductKernel):
+        return ff.ProductKernel(map(removeParams, kernel.operands))
+
+    elif isinstance(kernel, ff.NoneKernel):
+        return kernel
 
     else:
         raise NotImplementedError("Cannot translate kernel of type " + type(kernel).__name__)
