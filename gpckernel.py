@@ -97,6 +97,7 @@ class GPCKernel(object):
             kernel=self.getGPyKernel())
         self.isSparse = False
         self.model.optimize()
+        self.kernel = gpy2gpss(self.model.kern)
 
     def trainSparse(self, num_inducing=20):
         """
@@ -109,6 +110,7 @@ class GPCKernel(object):
             num_inducing=num_inducing)
         self.isSparse = True
         self.model.optimize()
+        self.kernel = gpy2gpss(self.model.kern)
 
     def draw(self, filename):
         """
