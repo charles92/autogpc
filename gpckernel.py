@@ -100,7 +100,7 @@ class GPCKernel(object):
         """
         Train a GP classification model
 
-        :param mode: 'full' for full GP, 'sparse' for scalable variational GP,
+        :param mode: 'full' for full GP, 'svgp' for scalable variational GP,
         'auto' for automatically selected model (default)
         :type mode: str
         :param restart: number of random restarts. If None, use current model
@@ -109,12 +109,12 @@ class GPCKernel(object):
         :type restart: None or int
         """
         mode = mode.lower()
-        assert mode in set(['full', 'sparse', 'auto']), "mode must be 'full', 'sparse' or 'auto'"
+        assert mode in set(['full', 'svgp', 'auto']), "mode must be 'full', 'svgp' or 'auto'"
         assert restart is None or (isinstance(restart, int) and restart > 0), "restart must be None or positive integer"
 
         # Configure GP mode
         if mode == 'auto':
-            mode = 'full' if (self.data.getDim() * self.data.getNum() <= 1e4) else 'sparse'
+            mode = 'full' if (self.data.getDim() * self.data.getNum() <= 1e4) else 'svgp'
 
         # Configure restarts and randomisation
         randomise = restart is not None
@@ -124,9 +124,9 @@ class GPCKernel(object):
         if mode == 'full':
             self.isSparse = False
             models = [self.trainFull(randomise=randomise) for i in xrange(restart)]
-        elif mode == 'sparse':
+        elif mode == 'svgp':
             self.isSparse = True
-            models = [self.trainSparse(randomise=randomise) for i in xrange(restart)]
+            models = [self.trainSVGP(randomise=randomise) for i in xrange(restart)]
         else:
             raise RuntimeError("Unrecognised GP model: " + mode)
 
@@ -149,7 +149,7 @@ class GPCKernel(object):
         :param randomise: whether to randomise initial hyperparameters before
         optimising the model (default to False)
         :type randomise: bool
-        :returns: trained `GPy.GPClassification` object
+        :returns: trained `GPy.models.GPClassification` object
         """
         k = self.kernel
         if randomise:
@@ -163,9 +163,9 @@ class GPCKernel(object):
         return m
 
 
-    def trainSparse(self, randomise=False, inducing=20):
+    def trainSVGP(self, randomise=False, inducing=10):
         """
-        Train a sparse GP classification model using inducing points
+        Train a sparse GP classification model using scalable variational GP
         Note that this method does NOT mutate this `GPCKernel` object. Instead
         it returns a trained `GPy.Model` object. To train the model AND update
         e.g. `self.model`, `self.kernel` fields, you have to call
@@ -176,15 +176,21 @@ class GPCKernel(object):
         :type randomise: bool
         :param inducing: number of inducing points to use
         :type inducing: int
-        :returns: trained `GPy.SparseGPClassification` object
+        :returns: trained `GPy.core.SVGP` object
         """
         k = self.kernel
         if randomise:
             k = removeKernelParams(k)
             k.initialise_params(data_shape=self.data.getDataShape())
 
-        m = GPy.models.SparseGPClassification(self.data.X, self.data.Y, \
-            kernel=gpss2gpy(k), num_inducing=inducing)
+        X = self.data.X
+        Y = self.data.Y
+        i = np.random.permutation(X.shape[0])[:inducing]
+        Z = X[i].copy()
+        ker = gpss2gpy(k)
+        lik = GPy.likelihoods.Bernoulli()
+
+        m = GPy.core.SVGP(X, Y, Z, ker, lik)
         m.optimize()
 
         return m
