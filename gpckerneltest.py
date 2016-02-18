@@ -66,7 +66,7 @@ for k in kern.expand():
     print k.kernel.pretty_print()
 
 # Train non-sparse model
-kern = gpckernel.GPCKernel(k3, data, 1)
+kern = gpckernel.GPCKernel(k5, data, 1)
 kern.train()
 kern.draw('imgs/gpckerneltest')
 

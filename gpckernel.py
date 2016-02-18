@@ -96,30 +96,99 @@ class GPCKernel(object):
             self.kernel.initialise_params(data_shape=self.data.getDataShape())
 
 
-    def train(self):
+    def train(self, mode='auto', restart=5):
         """
-        Train a GP classification model using all data points
-        """
-        self.model = GPy.models.GPClassification( \
-            self.data.X, \
-            self.data.Y, \
-            kernel=self.getGPyKernel())
-        self.isSparse = False
-        self.model.optimize()
-        self.kernel = gpy2gpss(self.model.kern)
+        Train a GP classification model
 
-    def trainSparse(self, num_inducing=20):
+        :param mode: 'full' for full GP, 'sparse' for scalable variational GP,
+        'auto' for automatically selected model (default)
+        :type mode: str
+        :param restart: number of random restarts. If None, use current model
+        hyperparameters as initial values; if `restart` is an integer, always
+        randomise the initialisation before training, even if `restart` is 1
+        :type restart: None or int
+        """
+        mode = mode.lower()
+        assert mode in set(['full', 'sparse', 'auto']), "mode must be 'full', 'sparse' or 'auto'"
+        assert restart is None or (isinstance(restart, int) and restart > 0), "restart must be None or positive integer"
+
+        # Configure GP mode
+        if mode == 'auto':
+            mode = 'full' if (self.data.getDim() * self.data.getNum() <= 1e4) else 'sparse'
+
+        # Configure restarts and randomisation
+        randomise = restart is not None
+        if restart is None: restart = 1
+
+        # Train the appropriate GP model
+        if mode == 'full':
+            self.isSparse = False
+            models = [self.trainFull(randomise=randomise) for i in xrange(restart)]
+        elif mode == 'sparse':
+            self.isSparse = True
+            models = [self.trainSparse(randomise=randomise) for i in xrange(restart)]
+        else:
+            raise RuntimeError("Unrecognised GP model: " + mode)
+
+        if len(models) > 0:
+            sorted(models, key=lambda m: -m.log_likelihood())
+            self.model = models[0]
+            self.kernel = gpy2gpss(self.model.kern)
+        else:
+            print "Warning: none of the %d optimisation attempts were successful." % restart
+
+
+    def trainFull(self, randomise=False):
+        """
+        Train a full GP classification model using all data points
+        Note that this method does NOT mutate this `GPCKernel` object. Instead
+        it returns a trained `GPy.Model` object. To train the model AND update
+        e.g. `self.model`, `self.kernel` fields, you have to call
+        `GPCKernel.train()` method.
+
+        :param randomise: whether to randomise initial hyperparameters before
+        optimising the model (default to False)
+        :type randomise: bool
+        :returns: trained `GPy.GPClassification` object
+        """
+        k = self.kernel
+        if randomise:
+            k = removeKernelParams(k)
+            k.initialise_params(data_shape=self.data.getDataShape())
+
+        m = GPy.models.GPClassification(self.data.X, self.data.Y, \
+            kernel=gpss2gpy(k))
+        m.optimize()
+
+        return m
+
+
+    def trainSparse(self, randomise=False, inducing=20):
         """
         Train a sparse GP classification model using inducing points
+        Note that this method does NOT mutate this `GPCKernel` object. Instead
+        it returns a trained `GPy.Model` object. To train the model AND update
+        e.g. `self.model`, `self.kernel` fields, you have to call
+        `GPCKernel.train()` method.
+
+        :param randomise: whether to randomise initial hyperparameters before
+        optimising the model (default to False)
+        :type randomise: bool
+        :param inducing: number of inducing points to use
+        :type inducing: int
+        :returns: trained `GPy.SparseGPClassification` object
         """
-        self.model = GPy.models.SparseGPClassification( \
-            self.data.X, \
-            self.data.Y, \
-            kernel=self.getGPyKernel(), \
-            num_inducing=num_inducing)
-        self.isSparse = True
-        self.model.optimize()
-        self.kernel = gpy2gpss(self.model.kern)
+        k = self.kernel
+        if randomise:
+            k = removeKernelParams(k)
+            k.initialise_params(data_shape=self.data.getDataShape())
+
+        m = GPy.models.SparseGPClassification(self.data.X, self.data.Y, \
+            kernel=gpss2gpy(k), num_inducing=inducing)
+        m.optimize()
+
+        return m
+
 
     def draw(self, filename):
         """
@@ -246,10 +315,10 @@ def removeKernelParams(kernel):
         return ff.PeriodicKernel(dimension=kernel.dimension)
 
     elif isinstance(kernel, ff.SumKernel):
-        return ff.SumKernel(map(removeParams, kernel.operands))
+        return ff.SumKernel(map(removeKernelParams, kernel.operands))
 
     elif isinstance(kernel, ff.ProductKernel):
-        return ff.ProductKernel(map(removeParams, kernel.operands))
+        return ff.ProductKernel(map(removeKernelParams, kernel.operands))
 
     elif isinstance(kernel, ff.NoneKernel):
         return kernel
