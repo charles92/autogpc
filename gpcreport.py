@@ -4,15 +4,19 @@
 import numpy as np
 import pylatex as pl
 import pylatex.utils as ut
+import os
 
 class GPCReport(object):
     """
     AutoGPC data analysis report.
     """
 
-    def __init__(self, paper='a4paper'):
+    def __init__(self, root='./latex', paper='a4paper', history=None):
+        self.root = root
         self.doc = pl.Document()
+
         self.makePreamble(paper=paper)
+        self.makeDataSummary(kern=history[1])
 
     def makePreamble(self, paper='a4paper'):
         doc = self.doc
@@ -29,7 +33,32 @@ class GPCReport(object):
         doc.append(pl.Command('url', 'https://github.com/charles92/autogpc'))
         doc.append(r'.')
 
+    def makeDataSummary(self, kern=None):
+        doc = self.doc
+        data = kern.data
+        dataShape = data.getDataShape()
+
+        imgName = 'data'
+        imgFormat = '.eps' if data.getDim() != 3 else '.png'
+        imgOutName = imgName + imgFormat
+        kern.draw(os.path.join(self.root, imgName))
+
+        with doc.create(pl.Section('The Data Set')):
+            s = r'The training data set contains {0} data points'.format(data.getNum())
+            s = s + r' which span {0} dimensions. '.format(data.getDim())
+            for dim in xrange(data.getDim()):
+                s = s + r"In dimension ``{0}'', ".format(data.XLabel[dim])
+                s = s + r'the data has a minimum of {0} '.format(dataShape['x_min'][dim])
+                s = s + r'and a maximum of {0}; '.format(dataShape['x_max'][dim])
+                s = s + r'the standard deviation is {0}.'.format(dataShape['x_sd'][dim])
+
+            doc.append(ut.NoEscape(s))
+
+            with doc.create(pl.Figure(position='h!')) as fig:
+                fig.add_image(imgOutName)
+                fig.add_caption(r'The input data set.')
+
     def export(self, filename=None):
         if filename is None:
-            filename = r'./latex/report'
-        self.doc.generate_pdf(filename)
+            filename = 'report'
+        self.doc.generate_pdf(os.path.join(self.root, filename))

@@ -18,4 +18,4 @@ search = GPCSearch(data=d, max_depth=5, beam_width=2)
 results = search.search()
 print "\n\nResults:"
 for k in results:
-	print k
+    print k
