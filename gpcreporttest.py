@@ -16,6 +16,10 @@ print "Data size = %d" % (d.getDim() * d.getNum())
 
 search = GPCSearch(data=d, max_depth=1, beam_width=2)
 results = search.search()
+print "NumDim = {0}".format(results[1].getGPyKernel().input_dim)
+print "Active dims:"
+for dim in results[1].getGPyKernel().active_dims:
+	print dim
 
 report = GPCReport(history=results)
 report.export()

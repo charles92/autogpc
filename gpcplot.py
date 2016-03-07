@@ -53,7 +53,7 @@ class GPCPlot(object):
         self.xlabels = xlabels
         self.usetex = usetex
 
-    def draw(self):
+    def draw(self, draw_kernel=True):
         raise NotImplementedError
 
     def save(self, fname):
@@ -73,7 +73,7 @@ class GPCPlot1D(GPCPlot):
             usetex = True
         GPCPlot.__init__(self, model, xlabels, usetex)
 
-    def draw(self):
+    def draw(self, draw_kernel=True):
         m = self.model
         plt.rc('text', usetex=True)
         fig, ax = plt.subplots()
@@ -94,12 +94,13 @@ class GPCPlot1D(GPCPlot):
             marker='x', mfc='blue', mew=1)
 
         # Latent function
-        mu, var = m._raw_predict(xgrd)
-        stdev = np.sqrt(var)
-        lower = m.likelihood.gp_link.transf(mu - 2 * stdev)
-        upper = m.likelihood.gp_link.transf(mu + 2 * stdev)
-        mu = m.likelihood.gp_link.transf(mu)
-        plots['link'] = plotGP(xgrd, mu, lower=lower, upper=upper, ax=ax)
+        if draw_kernel:
+            mu, var = m._raw_predict(xgrd)
+            stdev = np.sqrt(var)
+            lower = m.likelihood.gp_link.transf(mu - 2 * stdev)
+            upper = m.likelihood.gp_link.transf(mu + 2 * stdev)
+            mu = m.likelihood.gp_link.transf(mu)
+            plots['link'] = plotGP(xgrd, mu, lower=lower, upper=upper, ax=ax)
 
         self.fig = fig
         return plots
@@ -116,11 +117,14 @@ class GPCPlot2D(GPCPlot):
             usetex = True
         GPCPlot.__init__(self, model, xlabels, usetex)
 
-    def draw(self):
+    def draw(self, draw_kernel=True):
         m = self.model
         plt.rc('text', usetex=True)
-        fig, (ax0, ax1) = plt.subplots(nrows=1, ncols=2, sharex=True, sharey=True)
         plots = {}
+        if draw_kernel:
+            fig, (ax0, ax1) = plt.subplots(nrows=1, ncols=2, sharex=True, sharey=True)
+        else:
+            fig, ax0 =  plt.subplots()
 
         # Data range
         xmin, xmax, xrng, xgrd = getFrame(m.X)
@@ -128,40 +132,42 @@ class GPCPlot2D(GPCPlot):
         ax0.set_ylim(xmin[1], xmax[1])
         plt.rc('text', usetex=self.usetex)
         ax0.set_xlabel(self.xlabels[0])
-        ax1.set_xlabel(self.xlabels[0])
+        if draw_kernel: ax1.set_xlabel(self.xlabels[0])
         ax0.set_ylabel(self.xlabels[1])
         plt.rc('text', usetex=True)
 
         # Data points
         plots['data1'] = ax0.scatter(m.X[:,0], m.X[:,1], c=m.Y, marker='o',
             edgecolors='none', alpha=0.2, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
-        plots['data2'] = ax1.scatter(m.X[:,0], m.X[:,1], c=m.Y, marker='o',
-            edgecolors='none', alpha=0.2, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
+        if draw_kernel:
+            plots['data2'] = ax1.scatter(m.X[:,0], m.X[:,1], c=m.Y, marker='o',
+                edgecolors='none', alpha=0.2, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
 
         # Latent function
-        mu, var = m._raw_predict(xgrd)
+        if draw_kernel:
+            mu, var = m._raw_predict(xgrd)
 
-        # Latent function - mean
-        mu = mu.reshape(default_res, default_res).T
-        cs = ax0.contour(xrng[:,0], xrng[:,1], mu, default_lvl,
-            vmin=mu.min(), vmax=mu.max(), cmap=plt.cm.jet)
-        # Make zero contour thicker
-        if np.all(cs.levels != 0):
-            cs.levels = np.hstack((cs.levels, 0))
-        zcind = np.where(cs.levels == 0)[0].flatten()
-        plt.setp(cs.collections[zcind], linewidth=2)
-        # Add contour labels
-        ax0.clabel(cs, fontsize=8)
-        plots['gpmu'] = cs
+            # Latent function - mean
+            mu = mu.reshape(default_res, default_res).T
+            cs = ax0.contour(xrng[:,0], xrng[:,1], mu, default_lvl,
+                vmin=mu.min(), vmax=mu.max(), cmap=plt.cm.jet)
+            # Make zero contour thicker
+            if np.all(cs.levels != 0):
+                cs.levels = np.hstack((cs.levels, 0))
+            zcind = np.where(cs.levels == 0)[0].flatten()
+            plt.setp(cs.collections[zcind], linewidth=2)
+            # Add contour labels
+            ax0.clabel(cs, fontsize=8)
+            plots['gpmu'] = cs
 
-        # Latent function - standard deviation
-        var = var.reshape(default_res, default_res).T
-        sd = np.sqrt(var)
-        cs = ax1.contour(xrng[:,0], xrng[:,1], sd, default_lvl // 2,
-            vmin=sd.min(), vmax=sd.max(), cmap=plt.cm.OrRd)
-        # Add contour labels
-        ax1.clabel(cs, fontsize=8)
-        plots['gpsd'] = cs
+            # Latent function - standard deviation
+            var = var.reshape(default_res, default_res).T
+            sd = np.sqrt(var)
+            cs = ax1.contour(xrng[:,0], xrng[:,1], sd, default_lvl // 2,
+                vmin=sd.min(), vmax=sd.max(), cmap=plt.cm.OrRd)
+            # Add contour labels
+            ax1.clabel(cs, fontsize=8)
+            plots['gpsd'] = cs
 
         self.fig = fig
         return plots
@@ -179,7 +185,7 @@ class GPCPlot3D(GPCPlot):
         Using False instead.'
         GPCPlot.__init__(self, model, xlabels, False)
 
-    def draw(self):
+    def draw(self, draw_kernel=True):
         m = self.model
         fig = mlab.figure(bgcolor=(1, 1, 1), fgcolor=(0, 0, 0), size=(600, 601))
         plots = {}
@@ -197,11 +203,12 @@ class GPCPlot3D(GPCPlot):
         plots['data'] = pts3d
 
         # Contour surfaces of GP mean
-        mu, _ = m._raw_predict(xgrd)
-        xx, yy, zz = np.meshgrid(*tuple(xrng[:,i] for i in range(3)), indexing='ij')
-        mu = mu.reshape(xx.shape)
-        plots['gpmu'] = mlab.contour3d(xx, yy, zz, mu, figure=fig, colormap='jet',
-            contours=[-1, 0, 1], opacity = 0.25, vmin=-1.5, vmax=1.5)
+        if draw_kernel:
+            mu, _ = m._raw_predict(xgrd)
+            xx, yy, zz = np.meshgrid(*tuple(xrng[:,i] for i in range(3)), indexing='ij')
+            mu = mu.reshape(xx.shape)
+            plots['gpmu'] = mlab.contour3d(xx, yy, zz, mu, figure=fig, colormap='jet',
+                contours=[-1, 0, 1], opacity = 0.25, vmin=-1.5, vmax=1.5)
 
         self.fig = fig
         return plots
@@ -259,7 +266,7 @@ class GPCPlotHD(GPCPlot):
             usetex = True
         GPCPlot.__init__(self, model, xlabels, usetex)
 
-    def draw(self):
+    def draw(self, draw_kernel=True):
         m = self.model
         xnum, xdim = m.X.shape
         plt.rc('text', usetex=True)

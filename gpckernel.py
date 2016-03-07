@@ -196,20 +196,25 @@ class GPCKernel(object):
         return m
 
 
-    def draw(self, filename):
+    def draw(self, filename, draw_kernel=True):
         """
         Plot the model and data points
         :param file: the output file (path and) name, without extension
         """
+        # DEBUG
+        print 'DEBUG: kern dims = '
+        print self.model.input_dim
         plot = GPCPlot.create(self.model, self.data.XLabel, usetex=True)
-        plot.draw()
+        plot.draw(draw_kernel=draw_kernel)
         plot.save(filename)
+
 
     def getDepth(self):
         """
         :returns: depth of this kernel in the search tree
         """
         return self.depth
+
 
     def getNLML(self):
         """
@@ -219,6 +224,7 @@ class GPCKernel(object):
             return -self.model.log_likelihood()
         else:
             return float("inf")
+
 
     def getGPyKernel(self):
         """

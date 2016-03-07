@@ -41,16 +41,19 @@ class GPCReport(object):
         imgName = 'data'
         imgFormat = '.eps' if data.getDim() != 3 else '.png'
         imgOutName = imgName + imgFormat
-        kern.draw(os.path.join(self.root, imgName))
+        # DEBUG
+        print 'DEBUG: kern dims = '
+        print kern.getGPyKernel().input_dim
+        kern.draw(os.path.join(self.root, imgName), draw_kernel=False)
 
         with doc.create(pl.Section('The Data Set')):
             s = r'The training data set contains {0} data points'.format(data.getNum())
             s = s + r' which span {0} dimensions. '.format(data.getDim())
             for dim in xrange(data.getDim()):
                 s = s + r"In dimension ``{0}'', ".format(data.XLabel[dim])
-                s = s + r'the data has a minimum of {0} '.format(dataShape['x_min'][dim])
-                s = s + r'and a maximum of {0}; '.format(dataShape['x_max'][dim])
-                s = s + r'the standard deviation is {0}.'.format(dataShape['x_sd'][dim])
+                s = s + r'the data has a minimum of {0:.2f} '.format(dataShape['x_min'][dim])
+                s = s + r'and a maximum of {0:.2f}; '.format(dataShape['x_max'][dim])
+                s = s + r'the standard deviation is {0:.2f}.'.format(dataShape['x_sd'][dim])
 
             doc.append(ut.NoEscape(s))
 
