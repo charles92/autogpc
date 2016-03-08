@@ -28,20 +28,25 @@ class GPCPlot(object):
     """
 
     @staticmethod
-    def create(model, xlabels=None, usetex=False):
-        input_dim = model.input_dim
+    def create(model, active_dims=None, xlabels=None, usetex=False):
+        if active_dims is None or len(active_dims) == 0:
+            active_dims = range(model.input_dim)
+        else:
+            assert max(active_dims) < model.input_dim, 'Error: active dimension out of bound.'
+
+        input_dim = len(active_dims)
         if input_dim == 1:
-            return GPCPlot1D(model, xlabels=xlabels, usetex=usetex)
+            return GPCPlot1D(model, active_dims, xlabels=xlabels, usetex=usetex)
         elif input_dim == 2:
-            return GPCPlot2D(model, xlabels=xlabels, usetex=usetex)
+            return GPCPlot2D(model, active_dims, xlabels=xlabels, usetex=usetex)
         elif input_dim == 3:
-            return GPCPlot3D(model, xlabels=xlabels, usetex=usetex)
+            return GPCPlot3D(model, active_dims, xlabels=xlabels, usetex=usetex)
         elif input_dim >= 4:
-            return GPCPlotHD(model, xlabels=xlabels, usetex=usetex)
+            return GPCPlotHD(model, active_dims, xlabels=xlabels, usetex=usetex)
         else:
             raise ValueError('The model must have >= 1 input dimension.')
 
-    def __init__(self, model, xlabels, usetex):
+    def __init__(self, model, active_dims, xlabels, usetex):
         """
         This constructor should not be called directly. All instantiation of
         GPCPlot objects should be done via the factory method GPCPlot.create().
@@ -50,6 +55,7 @@ class GPCPlot(object):
         assert model is not None, 'GP model must not be None.'
         assert xlabels is not None, 'Labels for X axes must not be None.'
         self.model = model
+        self.active_dims = active_dims
         self.xlabels = xlabels
         self.usetex = usetex
 
@@ -67,11 +73,11 @@ class GPCPlot1D(GPCPlot):
     Gaussian process classification plot: 1-dimensional input
     """
 
-    def __init__(self, model, xlabels=None, usetex=False):
+    def __init__(self, model, active_dims, xlabels=None, usetex=False):
         if xlabels is None or len(xlabels) != 1:
             xlabels = (r'$x$',)
             usetex = True
-        GPCPlot.__init__(self, model, xlabels, usetex)
+        GPCPlot.__init__(self, model, active_dims, xlabels, usetex)
 
     def draw(self, draw_kernel=True):
         m = self.model
@@ -80,7 +86,7 @@ class GPCPlot1D(GPCPlot):
         plots = {}
 
         # Data range
-        xmin, xmax, _, xgrd = getFrame(m.X)
+        xmin, xmax, _, xgrd = getFrame(m.X[:,self.active_dims])
         ax.set_xlim(xmin, xmax)
         ax.set_ylim(ymin=-0.2, ymax=1.2)
         ax.set_yticks([0, 0.5, 1])
@@ -95,7 +101,9 @@ class GPCPlot1D(GPCPlot):
 
         # Latent function
         if draw_kernel:
-            mu, var = m._raw_predict(xgrd)
+            fullxgrd = np.zeros( (xgrd.shape[0], m.input_dim) )
+            fullxgrd[:,self.active_dims] = xgrd
+            mu, var = m._raw_predict(fullxgrd)
             stdev = np.sqrt(var)
             lower = m.likelihood.gp_link.transf(mu - 2 * stdev)
             upper = m.likelihood.gp_link.transf(mu + 2 * stdev)
@@ -111,11 +119,11 @@ class GPCPlot2D(GPCPlot):
     Gaussian process classification plot: 2-dimensional input
     """
 
-    def __init__(self, model, xlabels=None, usetex=False):
+    def __init__(self, model, active_dims, xlabels=None, usetex=False):
         if xlabels is None or len(xlabels) != 2:
             xlabels = (r'$x_1$', r'$x_2$')
             usetex = True
-        GPCPlot.__init__(self, model, xlabels, usetex)
+        GPCPlot.__init__(self, model, active_dims, xlabels, usetex)
 
     def draw(self, draw_kernel=True):
         m = self.model
@@ -178,12 +186,12 @@ class GPCPlot3D(GPCPlot):
     Gaussian process classification plot: 3-dimensional input
     """
 
-    def __init__(self, model, xlabels=None, usetex=False):
+    def __init__(self, model, active_dims, xlabels=None, usetex=False):
         if xlabels is None or len(xlabels) != 3:
             xlabels = ('x1', 'x2', 'x3')
         assert not usetex, 'Warning: usetex is not supported for 3-D plots. \
         Using False instead.'
-        GPCPlot.__init__(self, model, xlabels, False)
+        GPCPlot.__init__(self, model, active_dims, xlabels, False)
 
     def draw(self, draw_kernel=True):
         m = self.model
@@ -260,11 +268,11 @@ class GPCPlotHD(GPCPlot):
     Gaussian process classification plot: high (> 3) dimensional input
     """
 
-    def __init__(self, model, xlabels=None, usetex=False):
+    def __init__(self, model, active_dims, xlabels=None, usetex=False):
         if xlabels is None or len(xlabels) != model.X.shape[1]:
             xlabels = tuple((r'$x_{' + str(i+1) + r'}$') for i in range(model.X.shape[1]))
             usetex = True
-        GPCPlot.__init__(self, model, xlabels, usetex)
+        GPCPlot.__init__(self, model, active_dims, xlabels, usetex)
 
     def draw(self, draw_kernel=True):
         m = self.model
