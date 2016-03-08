@@ -86,7 +86,8 @@ class GPCPlot1D(GPCPlot):
         plots = {}
 
         # Data range
-        xmin, xmax, _, xgrd = getFrame(m.X[:,self.active_dims])
+        active_X = m.X[:,self.active_dims]
+        xmin, xmax, _, xgrd = getFrame(active_X)
         ax.set_xlim(xmin, xmax)
         ax.set_ylim(ymin=-0.2, ymax=1.2)
         ax.set_yticks([0, 0.5, 1])
@@ -96,7 +97,7 @@ class GPCPlot1D(GPCPlot):
         plt.rc('text', usetex=True)
 
         # Data points
-        plots['data'] = ax.plot(m.X, m.Y, label='Training data', linestyle='',
+        plots['data'] = ax.plot(active_X, m.Y, label='Training data', linestyle='',
             marker='x', mfc='blue', mew=1)
 
         # Latent function
