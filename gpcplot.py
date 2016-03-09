@@ -102,7 +102,7 @@ class GPCPlot1D(GPCPlot):
 
         # Latent function
         if draw_kernel:
-            fullxgrd = np.zeros( (xgrd.shape[0], m.input_dim) )
+            fullxgrd = np.zeros((xgrd.shape[0], m.input_dim))
             fullxgrd[:,self.active_dims] = xgrd
             mu, var = m._raw_predict(fullxgrd)
             stdev = np.sqrt(var)
@@ -136,7 +136,8 @@ class GPCPlot2D(GPCPlot):
             fig, ax0 =  plt.subplots()
 
         # Data range
-        xmin, xmax, xrng, xgrd = getFrame(m.X)
+        active_X = m.X[:,self.active_dims]
+        xmin, xmax, xrng, xgrd = getFrame(active_X)
         ax0.set_xlim(xmin[0], xmax[0])
         ax0.set_ylim(xmin[1], xmax[1])
         plt.rc('text', usetex=self.usetex)
@@ -146,25 +147,28 @@ class GPCPlot2D(GPCPlot):
         plt.rc('text', usetex=True)
 
         # Data points
-        plots['data1'] = ax0.scatter(m.X[:,0], m.X[:,1], c=m.Y, marker='o',
+        plots['data1'] = ax0.scatter(active_X[:,0], active_X[:,1], c=m.Y, marker='o',
             edgecolors='none', alpha=0.2, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
         if draw_kernel:
-            plots['data2'] = ax1.scatter(m.X[:,0], m.X[:,1], c=m.Y, marker='o',
+            plots['data2'] = ax1.scatter(active_X[:,0], active_X[:,1], c=m.Y, marker='o',
                 edgecolors='none', alpha=0.2, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
 
         # Latent function
         if draw_kernel:
-            mu, var = m._raw_predict(xgrd)
+            fullxgrd = np.zeros((xgrd.shape[0], m.input_dim))
+            fullxgrd[:,self.active_dims] = xgrd
+            mu, var = m._raw_predict(fullxgrd)
 
             # Latent function - mean
             mu = mu.reshape(default_res, default_res).T
             cs = ax0.contour(xrng[:,0], xrng[:,1], mu, default_lvl,
                 vmin=mu.min(), vmax=mu.max(), cmap=plt.cm.jet)
             # Make zero contour thicker
-            if np.all(cs.levels != 0):
-                cs.levels = np.hstack((cs.levels, 0))
-            zcind = np.where(cs.levels == 0)[0].flatten()
-            plt.setp(cs.collections[zcind], linewidth=2)
+            if min(cs.levels) <= 0 and max(cs.levels) >= 0:
+                if np.all(cs.levels != 0):
+                    cs.levels = np.hstack((cs.levels, 0))
+                zcind = np.where(cs.levels == 0)[0].flatten()
+                plt.setp(cs.collections[zcind], linewidth=2)
             # Add contour labels
             ax0.clabel(cs, fontsize=8)
             plots['gpmu'] = cs
@@ -199,10 +203,11 @@ class GPCPlot3D(GPCPlot):
         fig = mlab.figure(bgcolor=(1, 1, 1), fgcolor=(0, 0, 0), size=(600, 601))
         plots = {}
 
-        xmin, xmax, xrng, xgrd = getFrame(m.X, res=32)
+        active_X = m.X[:,self.active_dims]
+        xmin, xmax, xrng, xgrd = getFrame(active_X, res=32)
 
         # Data points
-        pts3d = mlab.points3d(m.X[:,0], m.X[:,1], m.X[:,2], m.Y[:,0],
+        pts3d = mlab.points3d(active_X[:,0], active_X[:,1], active_X[:,2], m.Y[:,0],
             extent=np.vstack((xmin, xmax)).T.flatten(), figure=fig,
             mode='sphere', vmin=-0.2, vmax=1.2, colormap='jet',
             scale_mode='none', scale_factor=0.05)
@@ -213,7 +218,9 @@ class GPCPlot3D(GPCPlot):
 
         # Contour surfaces of GP mean
         if draw_kernel:
-            mu, _ = m._raw_predict(xgrd)
+            fullxgrd = np.zeros((xgrd.shape[0], m.input_dim))
+            fullxgrd[:,self.active_dims] = xgrd
+            mu, _ = m._raw_predict(fullxgrd)
             xx, yy, zz = np.meshgrid(*tuple(xrng[:,i] for i in range(3)), indexing='ij')
             mu = mu.reshape(xx.shape)
             plots['gpmu'] = mlab.contour3d(xx, yy, zz, mu, figure=fig, colormap='jet',
@@ -222,7 +229,7 @@ class GPCPlot3D(GPCPlot):
         self.fig = fig
         return plots
 
-    def save(self, fname):
+    def save(self, fname, animate=False):
         # Animation
         def make_frame(t):
             t = t % 8
@@ -243,11 +250,12 @@ class GPCPlot3D(GPCPlot):
                 mlab.view(figure=self.fig, azimuth=45, elevation=el,
                     distance='auto', focalpoint='auto')
             return mlab.screenshot(antialiased=True)
-        anim = mpy.VideoClip(make_frame, duration=8)
-        anim.write_videofile(fname + '.mp4', fps=24, audio=False, codec='libx264')
-        print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.mp4')
-        anim.write_gif(fname + '.gif', fps=24)
-        print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.gif')
+        if animate:
+            anim = mpy.VideoClip(make_frame, duration=8)
+            anim.write_videofile(fname + '.mp4', fps=24, audio=False, codec='libx264')
+            print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.mp4')
+            anim.write_gif(fname + '.gif', fps=24)
+            print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.gif')
 
         # Static view 1
         mlab.view(figure=self.fig, azimuth=45, elevation=60,
@@ -277,13 +285,14 @@ class GPCPlotHD(GPCPlot):
 
     def draw(self, draw_kernel=True):
         m = self.model
-        xnum, xdim = m.X.shape
         plt.rc('text', usetex=True)
         fig, ax = plt.subplots()
         plots = {}
 
         # Data range
-        xmin, xmax, _ = getFrame(m.X, grid=False)
+        active_X = m.X[:,self.active_dims]
+        xnum, xdim = active_X.shape
+        xmin, xmax, _ = getFrame(active_X, grid=False)
         ax.axis(xmin=-0.1, xmax=xdim - 0.9, ymin=0, ymax=1)
         ax.axis('off')
 
@@ -313,7 +322,7 @@ class GPCPlotHD(GPCPlot):
 
         # Data points
         dataplots = []
-        Xn = (m.X - np.tile(xmin, (xnum, 1))) / np.tile(xmax - xmin, (xnum, 1))
+        Xn = (active_X - np.tile(xmin, (xnum, 1))) / np.tile(xmax - xmin, (xnum, 1))
         ind = (m.Y == 0).flatten()
         dataplots.append(ax.plot(np.arange(0, xdim).T, Xn[ind,:].T, linestyle='-',
             color='blue', marker='o', mfc='blue', ms=2, mec='blue'))
