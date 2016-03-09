@@ -51,7 +51,6 @@ class GPCPlot(object):
         This constructor should not be called directly. All instantiation of
         GPCPlot objects should be done via the factory method GPCPlot.create().
         """
-
         assert model is not None, 'GP model must not be None.'
         assert xlabels is not None, 'Labels for X axes must not be None.'
         self.model = model
@@ -74,7 +73,10 @@ class GPCPlot1D(GPCPlot):
     """
 
     def __init__(self, model, active_dims, xlabels=None, usetex=False):
-        if xlabels is None or len(xlabels) != 1:
+        assert len(active_dims) == 1, 'Error: GPCPlot1D only accepts 1 active dimension'
+        if isinstance(xlabels, (list, tuple)) and len(xlabels) > active_dims[0]:
+            xlabels = [xlabels[active_dims[0]]]
+        else:
             xlabels = (r'$x$',)
             usetex = True
         GPCPlot.__init__(self, model, active_dims, xlabels, usetex)
@@ -121,7 +123,10 @@ class GPCPlot2D(GPCPlot):
     """
 
     def __init__(self, model, active_dims, xlabels=None, usetex=False):
-        if xlabels is None or len(xlabels) != 2:
+        assert len(active_dims) == 2, 'Error: GPCPlot2D only accepts 2 active dimensions'
+        if isinstance(xlabels, (list, tuple)) and len(xlabels) > max(active_dims):
+            xlabels = [xlabels[d] for d in active_dims]
+        else:
             xlabels = (r'$x_1$', r'$x_2$')
             usetex = True
         GPCPlot.__init__(self, model, active_dims, xlabels, usetex)
@@ -192,10 +197,13 @@ class GPCPlot3D(GPCPlot):
     """
 
     def __init__(self, model, active_dims, xlabels=None, usetex=False):
-        if xlabels is None or len(xlabels) != 3:
+        assert len(active_dims) == 3, 'Error: GPCPlot3D only accepts 3 active dimensions'
+        if isinstance(xlabels, (list, tuple)) and len(xlabels) > max(active_dims):
+            xlabels = [xlabels[d] for d in active_dims]
+        else:
             xlabels = ('x1', 'x2', 'x3')
-        assert not usetex, 'Warning: usetex is not supported for 3-D plots. \
-        Using False instead.'
+        if usetex:
+            print 'Warning: usetex is not supported for 3-D plots. Using False instead.'
         GPCPlot.__init__(self, model, active_dims, xlabels, False)
 
     def draw(self, draw_kernel=True):
@@ -278,7 +286,10 @@ class GPCPlotHD(GPCPlot):
     """
 
     def __init__(self, model, active_dims, xlabels=None, usetex=False):
-        if xlabels is None or len(xlabels) != model.X.shape[1]:
+        assert len(active_dims) > 3, 'Error: GPCPlotHD only accepts >3 active dimensions'
+        if isinstance(xlabels, (list, tuple)) and len(xlabels) > max(active_dims):
+            xlabels = [xlabels[d] for d in active_dims]
+        else:
             xlabels = tuple((r'$x_{' + str(i+1) + r'}$') for i in range(model.X.shape[1]))
             usetex = True
         GPCPlot.__init__(self, model, active_dims, xlabels, usetex)
