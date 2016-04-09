@@ -223,6 +223,17 @@ class GPCKernel(object):
             return float("inf")
 
 
+    def getActiveDims(self):
+        """
+        Active dimensions that the current kernel is working on.
+        :returns: list of active dimensions
+        """
+        if self.model is not None:
+            return list(self.model.kern.active_dims)
+        else:
+            return list(gpss2gpy(self.kernel).active_dims)
+
+
     def getGPyKernel(self):
         """
         Convert this GPCKernel to GPy kernel.

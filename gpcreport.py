@@ -17,6 +17,7 @@ class GPCReport(object):
 
         self.makePreamble(paper=paper)
         self.makeDataSummary(kern=history[1]) # Note: history[0] is NoneKernel
+        self.makeSeparableDimensionSection(kern=history[1])
 
     def makePreamble(self, paper='a4paper'):
         doc = self.doc
@@ -57,6 +58,27 @@ class GPCReport(object):
             with doc.create(pl.Figure(position='h!')) as fig:
                 fig.add_image(imgOutName)
                 fig.add_caption(r'The input data set.')
+
+    def makeSeparableDimensionSection(self, kern=None):
+        doc = self.doc
+        data = kern.data
+        dataShape = data.getDataShape()
+
+        imgName = 'separable1'
+        imgFormat = '.eps' if data.getDim() != 3 else '.png'
+        imgOutName = imgName + imgFormat
+        kern.draw(os.path.join(self.root, imgName))
+
+        separableDim = kern.getActiveDims()[0]
+        separableDimLabel = data.XLabel[separableDim]
+        with doc.create(pl.Section('Most Separable Dimension')):
+            s = r'The data set is most separable in the {0} dimension. '.format(separableDimLabel)
+            doc.append(ut.NoEscape(s))
+
+            with doc.create(pl.Figure(position='h!')) as fig:
+                fig.add_image(imgOutName)
+                caption_str = r'The most separable dimension is {0}.'.format(separableDimLabel)
+                fig.add_caption(ut.NoEscape(caption_str))
 
     def export(self, filename=None):
         if filename is None:
