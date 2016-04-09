@@ -201,10 +201,7 @@ class GPCKernel(object):
         Plot the model and data points
         :param file: the output file (path and) name, without extension
         """
-        # DEBUG
-        print 'DEBUG: kern dims = '
-        print self.model.input_dim
-        plot = GPCPlot.create(self.model, self.data.XLabel, usetex=True)
+        plot = GPCPlot.create(self.model, xlabels=self.data.XLabel, usetex=True)
         plot.draw(draw_kernel=draw_kernel)
         plot.save(filename)
 

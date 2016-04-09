@@ -16,7 +16,7 @@ class GPCReport(object):
         self.doc = pl.Document()
 
         self.makePreamble(paper=paper)
-        self.makeDataSummary(kern=history[1])
+        self.makeDataSummary(kern=history[1]) # Note: history[0] is NoneKernel
 
     def makePreamble(self, paper='a4paper'):
         doc = self.doc
@@ -41,9 +41,6 @@ class GPCReport(object):
         imgName = 'data'
         imgFormat = '.eps' if data.getDim() != 3 else '.png'
         imgOutName = imgName + imgFormat
-        # DEBUG
-        print 'DEBUG: kern dims = '
-        print kern.getGPyKernel().input_dim
         kern.draw(os.path.join(self.root, imgName), draw_kernel=False)
 
         with doc.create(pl.Section('The Data Set')):
