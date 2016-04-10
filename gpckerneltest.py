@@ -95,4 +95,20 @@ assert gpckernel.isKernelEqual(k3, k4)
 k4 = ff.SumKernel([k1, k1])
 assert not gpckernel.isKernelEqual(k3, k4)
 
+# Misclassified Points
+print '\n\nMisclassified Points:'
+k0 = ff.SqExpKernel(dimension=0, lengthscale=1, sf=1.5)
+k1 = ff.SqExpKernel(dimension=1, lengthscale=1, sf=1)
+k = gpckernel.GPCKernel(ff.SumKernel([k0, k1]), data, depth=2)
+k.train()
+print 'active_dims:'
+print k.getActiveDims()
+mis = k.misclassifiedPoints()
+nMis = mis['X'].shape[0]
+assert nMis == mis['Y'].shape[0]
+assert nMis == mis['Phi'].shape[0]
+print 'X\tY\tMisclassified as'
+for i in range(nMis):
+	print np.array_str(mis['X'][i,:]) + '\t' + np.array_str(mis['Y'][i]) + '\t' + np.array_str(mis['Phi'][i])
+
 print "Passed!"

@@ -206,6 +206,19 @@ class GPCKernel(object):
         plot.save(filename)
 
 
+    def misclassifiedPoints(self):
+        """
+        Find training data points which are misclassified by the current model.
+        :returns: list of misclassified training points
+        """
+        assert self.model is not None, "Model does not exist."
+        X, Y = self.data.X, self.data.Y
+        Phi, _ = self.model.predict(X)               # Predicted Y, range [0, 1]
+        OK = (((Phi - 0.5) * (Y - 0.5)) < 0).flatten()    # < 0 if misclassified
+        ret = {'X': X[OK], 'Y': Y[OK], 'Phi': Phi[OK]}
+        return ret
+
+
     def getDepth(self):
         """
         :returns: depth of this kernel in the search tree
