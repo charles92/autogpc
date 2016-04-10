@@ -71,8 +71,13 @@ class GPCReport(object):
 
         separableDim = kern.getActiveDims()[0]
         separableDimLabel = data.XLabel[separableDim]
+        wrongPts = kern.misclassifiedPoints()
+        errorRate = wrongPts['X'].shape[0] / float(data.getNum()) * 100
         with doc.create(pl.Section("Most Separable Dimension")):
-            s = r"The dataset is most separable in the ``{0}'' dimension. ".format(separableDimLabel)
+            s = r"The dataset is most separable in the ``{0}'' dimension, ".format(separableDimLabel)
+            s = s + r"as shown in the figure. "
+            s = s + r"The training error rate is {0:.1f}\%.".format(errorRate)
+
             doc.append(ut.NoEscape(s))
 
             with doc.create(pl.Figure(position='h!')) as fig:
