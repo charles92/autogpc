@@ -44,20 +44,20 @@ class GPCReport(object):
         imgOutName = imgName + imgFormat
         kern.draw(os.path.join(self.root, imgName), draw_kernel=False)
 
-        with doc.create(pl.Section('The Data Set')):
-            s = r'The training data set contains {0} data points'.format(data.getNum())
-            s = s + r' which span {0} dimensions. '.format(data.getDim())
+        with doc.create(pl.Section("The Dataset")):
+            s = r"The training dataset contains {0} data points".format(data.getNum())
+            s = s + r" which span {0} dimensions. ".format(data.getDim())
             for dim in xrange(data.getDim()):
                 s = s + r"In dimension ``{0}'', ".format(data.XLabel[dim])
-                s = s + r'the data has a minimum of {0:.2f} '.format(dataShape['x_min'][dim])
-                s = s + r'and a maximum of {0:.2f}; '.format(dataShape['x_max'][dim])
-                s = s + r'the standard deviation is {0:.2f}.'.format(dataShape['x_sd'][dim])
+                s = s + r"the data has a minimum of {0:.2f} ".format(dataShape['x_min'][dim])
+                s = s + r"and a maximum of {0:.2f}; ".format(dataShape['x_max'][dim])
+                s = s + r"the standard deviation is {0:.2f}.".format(dataShape['x_sd'][dim])
 
             doc.append(ut.NoEscape(s))
 
             with doc.create(pl.Figure(position='h!')) as fig:
                 fig.add_image(imgOutName)
-                fig.add_caption(r'The input data set.')
+                fig.add_caption(r"The input dataset.")
 
     def makeSeparableDimensionSection(self, kern=None):
         doc = self.doc
@@ -71,13 +71,13 @@ class GPCReport(object):
 
         separableDim = kern.getActiveDims()[0]
         separableDimLabel = data.XLabel[separableDim]
-        with doc.create(pl.Section('Most Separable Dimension')):
-            s = r'The data set is most separable in the {0} dimension. '.format(separableDimLabel)
+        with doc.create(pl.Section("Most Separable Dimension")):
+            s = r"The dataset is most separable in the ``{0}'' dimension. ".format(separableDimLabel)
             doc.append(ut.NoEscape(s))
 
             with doc.create(pl.Figure(position='h!')) as fig:
                 fig.add_image(imgOutName)
-                caption_str = r'The most separable dimension is {0}.'.format(separableDimLabel)
+                caption_str = r"The most separable dimension is ``{0}''.".format(separableDimLabel)
                 fig.add_caption(ut.NoEscape(caption_str))
 
     def export(self, filename=None):
