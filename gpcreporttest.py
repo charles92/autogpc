@@ -7,14 +7,14 @@ from gpcdata import GPCData
 from gpcreport import GPCReport
 from gpcsearch import GPCSearch
 
-data = pods.datasets.crescent_data(seed=500)
+data = pods.datasets.crescent_data(seed=498)
 X = data['X']
 Y = data['Y']
 Y[Y.flatten() == -1] = 0
 d = GPCData(X, Y)
 print "Data size = %d" % (d.getDim() * d.getNum())
 
-search = GPCSearch(data=d, max_depth=1, beam_width=2)
+search = GPCSearch(data=d, max_depth=2, beam_width=2)
 results = search.search()
 
 report = GPCReport(history=results)

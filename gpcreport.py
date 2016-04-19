@@ -16,8 +16,11 @@ class GPCReport(object):
         self.doc = pl.Document()
 
         self.makePreamble(paper=paper)
-        self.makeDataSummary(kern=history[1]) # Note: history[0] is NoneKernel
-        self.makeSeparableDimensionSection(kern=history[1])
+        self.makeDataSummary(search_history=history) # Note: history[0] is NoneKernel
+        self.makeMostSeparableDimensionSection(search_history=history)
+        if len(history) > 2:
+            self.makeNextSeparableDimensionSection(search_history=history)
+
 
     def makePreamble(self, paper='a4paper'):
         doc = self.doc
@@ -34,7 +37,11 @@ class GPCReport(object):
         doc.append(pl.Command('url', 'https://github.com/charles92/autogpc'))
         doc.append(r'.')
 
-    def makeDataSummary(self, kern=None):
+
+    def makeDataSummary(self, search_history=None):
+        assert isinstance(search_history, list) and len(search_history) > 1, \
+            'search_history must be a list containing >=2 GPCKernel instances'
+        kern = search_history[1]
         doc = self.doc
         data = kern.data
         dataShape = data.getDataShape()
@@ -59,7 +66,11 @@ class GPCReport(object):
                 fig.add_image(imgOutName)
                 fig.add_caption(r"The input dataset.")
 
-    def makeSeparableDimensionSection(self, kern=None):
+
+    def makeMostSeparableDimensionSection(self, search_history=None):
+        assert isinstance(search_history, list) and len(search_history) > 1, \
+            'search_history must be a list containing >=2 GPCKernel instances'
+        kern = search_history[1]
         doc = self.doc
         data = kern.data
         dataShape = data.getDataShape()
@@ -73,7 +84,8 @@ class GPCReport(object):
         separableDimLabel = data.XLabel[separableDim]
         wrongPts = kern.misclassifiedPoints()
         errorRate = wrongPts['X'].shape[0] / float(data.getNum()) * 100
-        with doc.create(pl.Section("Most Separable Dimension")):
+
+        with doc.create(pl.Section("The Most Separable Dimension")):
             s = r"The dataset is most separable in the ``{0}'' dimension, ".format(separableDimLabel)
             s = s + r"as shown in the figure. "
             s = s + r"The training error rate is {0:.1f}\%.".format(errorRate)
@@ -84,6 +96,46 @@ class GPCReport(object):
                 fig.add_image(imgOutName)
                 caption_str = r"The most separable dimension is ``{0}''.".format(separableDimLabel)
                 fig.add_caption(ut.NoEscape(caption_str))
+
+
+    def makeNextSeparableDimensionSection(self, search_history=None):
+        assert isinstance(search_history, list) and len(search_history) > 2, \
+            'search_history must be a list containing >=3 GPCKernel instances'
+        kern = search_history[2]
+        doc = self.doc
+        data = kern.data
+        dataShape = data.getDataShape()
+
+        imgName = 'separable2'
+        imgFormat = '.eps' if data.getDim() != 3 else '.png'
+        imgOutName = imgName + imgFormat
+        kern.draw(os.path.join(self.root, imgName), active_dims_only=True)
+
+        prevKern = search_history[1]
+        prevDim = prevKern.getActiveDims()[0]
+        prevDimLabel = data.XLabel[prevDim]
+        wrongPts = prevKern.misclassifiedPoints()
+        prevErrorRate = wrongPts['X'].shape[0] / float(data.getNum()) * 100
+
+        thisDim = (set(kern.getActiveDims()) - set([prevDim])).pop()
+        thisDimLabel = data.XLabel[thisDim]
+        wrongPts = kern.misclassifiedPoints()
+        thisErrorRate = wrongPts['X'].shape[0] / float(data.getNum()) * 100
+
+        diffErrorRate = prevErrorRate - thisErrorRate
+
+        with doc.create(pl.Section("The Next Separable Dimension")):
+            s = r"The classification performance can be improved by incorporating the ``{0}'' variable in addition to the ``{1}'' variable. ".format(thisDimLabel, prevDimLabel)
+            s = s + r"This reduces the training error rate by {0:.1f}\% to {1:.1f}\%. ".format(diffErrorRate, thisErrorRate)
+            s = s + r"The result is shown in the figure below, with predictive posterior probabilities. "
+
+            doc.append(ut.NoEscape(s))
+
+            with doc.create(pl.Figure(position='h!')) as fig:
+                fig.add_image(imgOutName)
+                caption_str = r"Trained classifier with two dimensions: ``{0}'' and ``{1}''.".format(prevDimLabel, thisDimLabel)
+                fig.add_caption(ut.NoEscape(caption_str))
+
 
     def export(self, filename=None):
         if filename is None:
