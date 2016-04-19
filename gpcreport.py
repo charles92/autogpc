@@ -42,7 +42,7 @@ class GPCReport(object):
         imgName = 'data'
         imgFormat = '.eps' if data.getDim() != 3 else '.png'
         imgOutName = imgName + imgFormat
-        kern.draw(os.path.join(self.root, imgName), draw_kernel=False)
+        kern.draw(os.path.join(self.root, imgName), draw_posterior=False)
 
         with doc.create(pl.Section("The Dataset")):
             s = r"The training dataset contains {0} data points".format(data.getNum())
@@ -67,7 +67,7 @@ class GPCReport(object):
         imgName = 'separable1'
         imgFormat = '.eps' if data.getDim() != 3 else '.png'
         imgOutName = imgName + imgFormat
-        kern.draw(os.path.join(self.root, imgName))
+        kern.draw(os.path.join(self.root, imgName), active_dims_only=True)
 
         separableDim = kern.getActiveDims()[0]
         separableDimLabel = data.XLabel[separableDim]

@@ -196,13 +196,22 @@ class GPCKernel(object):
         return m
 
 
-    def draw(self, filename, draw_kernel=True):
+    def draw(self, filename, active_dims_only=False, draw_posterior=True):
         """
         Plot the model and data points
-        :param file: the output file (path and) name, without extension
+        :param filename: the output file (path and) name, without extension
+        :param active_dims_only: True if want to present only the active
+        dimensions (defaults to False)
+        :param draw_posterior: True if want to draw the posterior contour
+        (defaults to True)
         """
-        plot = GPCPlot.create(self.model, xlabels=self.data.XLabel, usetex=True)
-        plot.draw(draw_kernel=draw_kernel)
+        if active_dims_only:
+            plot = GPCPlot.create(self.model, xlabels=self.data.XLabel, usetex=True,
+                active_dims=self.getActiveDims())
+        else:
+            plot = GPCPlot.create(self.model, xlabels=self.data.XLabel, usetex=True)
+
+        plot.draw(draw_posterior=draw_posterior)
         plot.save(filename)
 
 

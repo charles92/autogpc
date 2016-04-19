@@ -58,7 +58,7 @@ class GPCPlot(object):
         self.xlabels = xlabels
         self.usetex = usetex
 
-    def draw(self, draw_kernel=True):
+    def draw(self, draw_posterior=True):
         raise NotImplementedError
 
     def save(self, fname):
@@ -81,7 +81,7 @@ class GPCPlot1D(GPCPlot):
             usetex = True
         GPCPlot.__init__(self, model, active_dims, xlabels, usetex)
 
-    def draw(self, draw_kernel=True):
+    def draw(self, draw_posterior=True):
         m = self.model
         plt.rc('text', usetex=True)
         fig, ax = plt.subplots()
@@ -103,7 +103,7 @@ class GPCPlot1D(GPCPlot):
             marker='x', mfc='blue', mew=1)
 
         # Latent function
-        if draw_kernel:
+        if draw_posterior:
             fullxgrd = np.zeros((xgrd.shape[0], m.input_dim))
             fullxgrd[:,self.active_dims] = xgrd
             mu, var = m._raw_predict(fullxgrd)
@@ -131,11 +131,11 @@ class GPCPlot2D(GPCPlot):
             usetex = True
         GPCPlot.__init__(self, model, active_dims, xlabels, usetex)
 
-    def draw(self, draw_kernel=True):
+    def draw(self, draw_posterior=True):
         m = self.model
         plt.rc('text', usetex=True)
         plots = {}
-        if draw_kernel:
+        if draw_posterior:
             fig, (ax0, ax1) = plt.subplots(nrows=1, ncols=2, sharex=True, sharey=True)
         else:
             fig, ax0 =  plt.subplots()
@@ -147,19 +147,19 @@ class GPCPlot2D(GPCPlot):
         ax0.set_ylim(xmin[1], xmax[1])
         plt.rc('text', usetex=self.usetex)
         ax0.set_xlabel(self.xlabels[0])
-        if draw_kernel: ax1.set_xlabel(self.xlabels[0])
+        if draw_posterior: ax1.set_xlabel(self.xlabels[0])
         ax0.set_ylabel(self.xlabels[1])
         plt.rc('text', usetex=True)
 
         # Data points
         plots['data1'] = ax0.scatter(active_X[:,0], active_X[:,1], c=m.Y, marker='o',
             edgecolors='none', alpha=0.2, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
-        if draw_kernel:
+        if draw_posterior:
             plots['data2'] = ax1.scatter(active_X[:,0], active_X[:,1], c=m.Y, marker='o',
                 edgecolors='none', alpha=0.2, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
 
         # Latent function
-        if draw_kernel:
+        if draw_posterior:
             fullxgrd = np.zeros((xgrd.shape[0], m.input_dim))
             fullxgrd[:,self.active_dims] = xgrd
             mu, var = m._raw_predict(fullxgrd)
@@ -206,7 +206,7 @@ class GPCPlot3D(GPCPlot):
             print 'Warning: usetex is not supported for 3-D plots. Using False instead.'
         GPCPlot.__init__(self, model, active_dims, xlabels, False)
 
-    def draw(self, draw_kernel=True):
+    def draw(self, draw_posterior=True):
         m = self.model
         fig = mlab.figure(bgcolor=(1, 1, 1), fgcolor=(0, 0, 0), size=(600, 601))
         plots = {}
@@ -225,7 +225,7 @@ class GPCPlot3D(GPCPlot):
         plots['data'] = pts3d
 
         # Contour surfaces of GP mean
-        if draw_kernel:
+        if draw_posterior:
             fullxgrd = np.zeros((xgrd.shape[0], m.input_dim))
             fullxgrd[:,self.active_dims] = xgrd
             mu, _ = m._raw_predict(fullxgrd)
@@ -294,7 +294,7 @@ class GPCPlotHD(GPCPlot):
             usetex = True
         GPCPlot.__init__(self, model, active_dims, xlabels, usetex)
 
-    def draw(self, draw_kernel=True):
+    def draw(self, draw_posterior=True):
         m = self.model
         plt.rc('text', usetex=True)
         fig, ax = plt.subplots()
