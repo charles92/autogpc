@@ -36,8 +36,8 @@ class GPCSearch(object):
                 print "  Expanding:"
                 print k
                 expanded = k.expand()
-                print "  Expanded kernels:"
-                print '\n'.join(k.__repr__() for k in expanded)
+                # print "  Expanded kernels:"
+                # print '\n'.join(k.__repr__() for k in expanded)
                 newkernels.extend(expanded)
 
             print "  Fully expanded kernel set:"

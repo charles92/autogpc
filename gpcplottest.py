@@ -3,7 +3,7 @@
 """
 Usage:
 
-ipython gpcplotdemo.py
+ipython gpcplottest.py
 """
 
 import GPy
