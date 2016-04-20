@@ -18,8 +18,9 @@ import moviepy.editor as mpy
 # Number of samples drawn from the posterior GP, which are then plotted
 default_res = 256
 
-# Number of contour levels
-default_lvl = 7
+# Posterior levels at which contours are drawn
+default_contours = [0.05, 0.25, 0.5, 0.75, 0.95]
+default_sd_contours = [0.05, 0.2, 0.5]
 
 
 class GPCPlot(object):
@@ -163,26 +164,26 @@ class GPCPlot2D(GPCPlot):
             fullxgrd = np.zeros((xgrd.shape[0], m.input_dim))
             fullxgrd[:,self.active_dims] = xgrd
             mu, var = m._raw_predict(fullxgrd)
+            sd = np.sqrt(var)
+            sd = m.likelihood.gp_link.transf(mu + 2 * sd) - m.likelihood.gp_link.transf(mu - 2 * sd)
+            mu = m.likelihood.gp_link.transf(mu)
 
             # Latent function - mean
             mu = mu.reshape(default_res, default_res).T
-            cs = ax0.contour(xrng[:,0], xrng[:,1], mu, default_lvl,
-                vmin=mu.min(), vmax=mu.max(), cmap=plt.cm.jet)
-            # Make zero contour thicker
-            if min(cs.levels) <= 0 and max(cs.levels) >= 0:
-                if np.all(cs.levels != 0):
-                    cs.levels = np.hstack((cs.levels, 0))
-                zcind = np.where(cs.levels == 0)[0].flatten()
-                plt.setp(cs.collections[zcind], linewidth=2)
+            cs = ax0.contour(xrng[:,0], xrng[:,1], mu, default_contours,
+                vmin=0, vmax=1, cmap=plt.cm.jet)
+            # Make 0.5 contour thicker
+            if np.any(cs.levels == 0.5):
+                cind = np.where(cs.levels == 0.5)[0].flatten()
+                plt.setp(cs.collections[cind], linewidth=2)
             # Add contour labels
             ax0.clabel(cs, fontsize=8)
             plots['gpmu'] = cs
 
             # Latent function - standard deviation
-            var = var.reshape(default_res, default_res).T
-            sd = np.sqrt(var)
-            cs = ax1.contour(xrng[:,0], xrng[:,1], sd, default_lvl // 2,
-                vmin=sd.min(), vmax=sd.max(), cmap=plt.cm.OrRd)
+            sd = sd.reshape(default_res, default_res).T
+            cs = ax1.contour(xrng[:,0], xrng[:,1], sd, default_sd_contours,
+                vmin=-0.5, vmax=max(default_sd_contours), cmap=plt.cm.OrRd)
             # Add contour labels
             ax1.clabel(cs, fontsize=8)
             plots['gpsd'] = cs
@@ -229,10 +230,11 @@ class GPCPlot3D(GPCPlot):
             fullxgrd = np.zeros((xgrd.shape[0], m.input_dim))
             fullxgrd[:,self.active_dims] = xgrd
             mu, _ = m._raw_predict(fullxgrd)
+            mu = m.likelihood.gp_link.transf(mu)
             xx, yy, zz = np.meshgrid(*tuple(xrng[:,i] for i in range(3)), indexing='ij')
             mu = mu.reshape(xx.shape)
             plots['gpmu'] = mlab.contour3d(xx, yy, zz, mu, figure=fig, colormap='jet',
-                contours=[-1, 0, 1], opacity = 0.25, vmin=-1.5, vmax=1.5)
+                contours=[.1, .5, .9], opacity = 0.25, vmin=0, vmax=1)
 
         self.fig = fig
         return plots
