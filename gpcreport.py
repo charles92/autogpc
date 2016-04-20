@@ -58,7 +58,7 @@ class GPCReport(object):
                 s = s + r"In dimension ``{0}'', ".format(data.XLabel[dim])
                 s = s + r"the data has a minimum of {0:.2f} ".format(dataShape['x_min'][dim])
                 s = s + r"and a maximum of {0:.2f}; ".format(dataShape['x_max'][dim])
-                s = s + r"the standard deviation is {0:.2f}.".format(dataShape['x_sd'][dim])
+                s = s + r"the standard deviation is {0:.2f}. ".format(dataShape['x_sd'][dim])
 
             doc.append(ut.NoEscape(s))
 

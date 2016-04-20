@@ -12,7 +12,7 @@ import pods
 from gpcplot import GPCPlot as gpcplt
 
 # 1D
-data = pods.datasets.toy_linear_1d_classification(seed=500)
+data = pods.datasets.toy_linear_1d_classification(seed=497)
 X = data['X']
 Y = data['Y'][:, 0:1]
 Y[Y.flatten() == -1] = 0
@@ -26,7 +26,7 @@ plotobj.draw()
 plotobj.save('./imgs/test1d_after')
 
 # 2D
-data = pods.datasets.crescent_data(seed=500)
+data = pods.datasets.crescent_data(seed=400)
 X = data['X']
 Y = data['Y']
 Y[Y.flatten()==-1] = 0
