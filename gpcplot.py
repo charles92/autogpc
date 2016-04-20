@@ -99,10 +99,10 @@ class GPCPlot1D(GPCPlot):
         plt.rc('text', usetex=True)
 
         # Data points
-        plots['data'] = ax.plot(active_X, m.Y, label='Training data', linestyle='',
-            marker='x', mfc='blue', mew=1)
+        plots['data'] = ax.scatter(active_X, m.Y, c=m.Y, marker='o',
+            edgecolors='none', alpha=0.2, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
 
-        # Latent function
+        # Latent function with 95% confidence interval
         if draw_posterior:
             fullxgrd = np.zeros((xgrd.shape[0], m.input_dim))
             fullxgrd[:,self.active_dims] = xgrd
@@ -407,6 +407,7 @@ def plotGP(x, mu, lower=None, upper=None, ax=None,
         # Fill between edges
         plots['fill'] = ax.fill(np.vstack((x,x[::-1])),
             np.vstack((upper,lower[::-1])),
-            color=fillcolor)
+            color=fillcolor,
+            zorder=-999)
 
     return plots
