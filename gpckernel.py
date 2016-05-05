@@ -48,6 +48,7 @@ class GPCKernel(object):
         self.depth = depth
         self.model = None
         self.isSparse = None
+        self.cvError = None
         if not isinstance(self.kernel, ff.NoneKernel):
             self.kernel.initialise_params(data_shape=self.data.getDataShape())
 
@@ -94,6 +95,8 @@ class GPCKernel(object):
         self.kernel = removeKernelParams(self.kernel)
         if not isinstance(self.kernel, ff.NoneKernel):
             self.kernel.initialise_params(data_shape=self.data.getDataShape())
+        self.isSparse = None
+        self.cvError = None
 
 
     def train(self, mode='auto', restart=5):
@@ -114,86 +117,108 @@ class GPCKernel(object):
 
         # Configure GP mode
         if mode == 'auto':
-            mode = 'full' if (self.data.getDim() * self.data.getNum() <= 1e4) else 'svgp'
+            mode = 'full' if (self.data.getDim() * self.data.getNum() <= 4e3) else 'svgp'
+        self.isSparse = mode == 'svgp'
 
         # Configure restarts and randomisation
         randomise = restart is not None
         if restart is None: restart = 1
 
-        # Train the appropriate GP model
-        if mode == 'full':
-            self.isSparse = False
-            models = [self.trainFull(randomise=randomise) for i in xrange(restart)]
-        elif mode == 'svgp':
-            self.isSparse = True
-            models = [self.trainSVGP(randomise=randomise) for i in xrange(restart)]
-        else:
-            raise RuntimeError("Unrecognised GP model: " + mode)
+        # Split dataset into training and validation sets
+        X, Y, XT, YT = self.data.getTrainTestSplits(restart)
 
-        if len(models) > 0:
-            sorted(models, key=lambda m: -m.log_likelihood())
-            self.model = models[0]
+        # Train the appropriate GP model
+        if self.isSparse:
+            results = [self.trainSVGP(X[i], Y[i], XT=XT[i], YT=YT[i], randomise=randomise) for i in xrange(restart)]
+        else:
+            results = [self.trainFull(X[i], Y[i], XT=XT[i], YT=YT[i], randomise=randomise) for i in xrange(restart)]
+
+        if len(results) > 0:
+            sorted(results, key=lambda x: x['error'])
+            self.model = results[0]['model']
             self.kernel = gpy2gpss(self.model.kern)
+            self.cvError = results[0]['error']
         else:
             print "Warning: none of the %d optimisation attempts were successful." % restart
 
 
-    def trainFull(self, randomise=False):
+    def trainFull(self, X, Y, XT=None, YT=None, randomise=False):
         """
-        Train a full GP classification model using all data points
+        Train a full GP classification model using all data points, and compute
+        cross-validated error rate on validation set
         Note that this method does NOT mutate this `GPCKernel` object. Instead
         it returns a trained `GPy.Model` object. To train the model AND update
         e.g. `self.model`, `self.kernel` fields, you have to call
         `GPCKernel.train()` method.
 
+        :param X: training data points
+        :param Y: training targets
+        :param XT: validation data points, same as training if None
+        :param YT: validation targets, same as training if None
         :param randomise: whether to randomise initial hyperparameters before
         optimising the model (default to False)
         :type randomise: bool
-        :returns: trained `GPy.models.GPClassification` object
+        :returns: trained `GPy.models.GPClassification` object and
+        cross-validated error rate
         """
+        if XT is None or YT is None:
+            XT, YT = X, Y
+
         k = self.kernel
         if randomise:
             k = removeKernelParams(k)
             k.initialise_params(data_shape=self.data.getDataShape())
 
-        m = GPy.models.GPClassification(self.data.X, self.data.Y, \
-            kernel=gpss2gpy(k))
+        m = GPy.models.GPClassification(X, Y, kernel=gpss2gpy(k))
         m.optimize()
+        cverror = self.misclassifiedPoints(model=m, X=XT, Y=YT)['X'].shape[0] / float(XT.shape[0])
 
-        return m
+        return {
+            'model': m,
+            'error': cverror
+        }
 
 
-    def trainSVGP(self, randomise=False, inducing=10):
+    def trainSVGP(self, X, Y, XT=None, YT=None, randomise=False, inducing=10):
         """
-        Train a sparse GP classification model using scalable variational GP
+        Train a sparse GP classification model using scalable variational GP,
+        and compute cross-validated error rate on validation set
         Note that this method does NOT mutate this `GPCKernel` object. Instead
         it returns a trained `GPy.Model` object. To train the model AND update
         e.g. `self.model`, `self.kernel` fields, you have to call
         `GPCKernel.train()` method.
 
+        :param X: training data points
+        :param Y: training targets
+        :param XT: validation data points, same as training if None
+        :param YT: validation targets, same as training if None
         :param randomise: whether to randomise initial hyperparameters before
         optimising the model (default to False)
         :type randomise: bool
         :param inducing: number of inducing points to use
         :type inducing: int
-        :returns: trained `GPy.core.SVGP` object
+        :returns: trained `GPy.core.SVGP` object and cross-validated error rate
         """
+        if XT is None or YT is None:
+            XT, YT = X, Y
+
         k = self.kernel
         if randomise:
             k = removeKernelParams(k)
             k.initialise_params(data_shape=self.data.getDataShape())
 
-        X = self.data.X
-        Y = self.data.Y
         i = np.random.permutation(X.shape[0])[:inducing]
         Z = X[i].copy()
         ker = gpss2gpy(k)
         lik = GPy.likelihoods.Bernoulli()
-
         m = GPy.core.SVGP(X, Y, Z, ker, lik)
         m.optimize()
+        cverror = self.misclassifiedPoints(model=m, X=XT, Y=YT)['X'].shape[0] / float(XT.shape[0])
 
-        return m
+        return {
+            'model': m,
+            'error': cverror
+        }
 
 
     def draw(self, filename, active_dims_only=False, draw_posterior=True):
@@ -215,14 +240,20 @@ class GPCKernel(object):
         plot.save(filename)
 
 
-    def misclassifiedPoints(self):
+    def misclassifiedPoints(self, model=None, X=None, Y=None):
         """
-        Find training data points which are misclassified by the current model.
+        Find testing data points which are misclassified by the current model.
+
+        :param model: GPy model to be evaluated, defaults to the current model
+        :param X: testing data points, defaults to the entire current dataset
+        :param Y: testing targets, defaults to the entire current dataset
         :returns: list of misclassified training points
         """
-        assert self.model is not None, "Model does not exist."
-        X, Y = self.data.X, self.data.Y
-        Phi, _ = self.model.predict(X)               # Predicted Y, range [0, 1]
+        if model is None: model = self.model
+        if X is None or Y is None: X, Y = self.data.X, self.data.Y
+        assert model is not None, "Model does not exist."
+
+        Phi, _ = model.predict(X)                    # Predicted Y, range [0, 1]
         OK = (((Phi - 0.5) * (Y - 0.5)) < 0).flatten()    # < 0 if misclassified
         ret = {'X': X[OK], 'Y': Y[OK], 'Phi': Phi[OK]}
         return ret
