@@ -2,65 +2,91 @@
 # Department of Engineering, University of Cambridge
 
 import numpy as np
+from sklearn.cross_validation import KFold
 
 class GPCData(object):
-	"""
-	Dataset for AutoGPC
-	"""
-	def __init__(self, X, Y, XLabel=None, YLabel=None):
-		"""
-		Instantiate a dataset for AutoGPC with N data points and D input
-		dimensions.
+    """
+    Dataset for AutoGPC
+    """
+    def __init__(self, X, Y, XLabel=None, YLabel=None):
+        """
+        Instantiate a dataset for AutoGPC with N data points and D input
+        dimensions.
 
-		:param X: NxD matrix of real-valued inputs
-		:param Y: Nx1 matrix of {0,1}-valued class labels
-		:param XLabel: D-tuple or D-list of axis labels
-		:param YLable: y axis label string
-		"""
-		# Sanity check
-		assert isinstance(X, np.ndarray), "X must be a Numpy ndarray"
-		assert X.ndim == 2, "X must be a two-dimensional array"
-		assert isinstance(Y, np.ndarray), "Y must be a Numpy ndarray"
-		assert Y.ndim == 2 and Y.shape[1] == 1, "Y must be a vector"
-		assert Y.shape[0] == X.shape[0], "X and Y must contain the same number of entries"
+        :param X: NxD matrix of real-valued inputs
+        :param Y: Nx1 matrix of {0,1}-valued class labels
+        :param XLabel: D-tuple or D-list of axis labels
+        :param YLable: y axis label string
+        """
+        # Sanity check
+        assert isinstance(X, np.ndarray), "X must be a Numpy ndarray"
+        assert X.ndim == 2, "X must be a two-dimensional array"
+        assert isinstance(Y, np.ndarray), "Y must be a Numpy ndarray"
+        assert Y.ndim == 2 and Y.shape[1] == 1, "Y must be a vector"
+        assert Y.shape[0] == X.shape[0], "X and Y must contain the same number of entries"
 
-		# Populate instance fields
-		self.X = X
-		self.Y = Y
+        # Populate instance fields
+        self.X = X
+        self.Y = Y
 
-		if XLabel is not None and isinstance(XLabel, (list,tuple)) and len(XLabel) == X.shape[1]:
-			self.XLabel = tuple(XLabel)
-		else:
-			self.XLabel = tuple('$x_{{{0}}}$'.format(d + 1) for d in range(X.shape[1]))
+        if XLabel is not None and isinstance(XLabel, (list,tuple)) and len(XLabel) == X.shape[1]:
+            self.XLabel = tuple(XLabel)
+        else:
+            self.XLabel = tuple('$x_{{{0}}}$'.format(d + 1) for d in range(X.shape[1]))
 
-		if YLabel is not None and isinstance(YLabel, basestring):
-			self.YLabel = YLabel
-		else:
-			self.YLabel = '$y$'
+        if YLabel is not None and isinstance(YLabel, basestring):
+            self.YLabel = YLabel
+        else:
+            self.YLabel = '$y$'
 
-	def __repr__(self):
-		return 'GPCData: %d dimensions, %d data points.\n' % \
-		       (self.getDim(), self.getNum()) + \
-		       'XLabel:\n' + \
-		       ', '.join(self.XLabel) + '\n' + \
-		       'YLabel:\n' + \
-		       self.YLabel
+    def __repr__(self):
+        return 'GPCData: %d dimensions, %d data points.\n' % \
+               (self.getDim(), self.getNum()) + \
+               'XLabel:\n' + \
+               ', '.join(self.XLabel) + '\n' + \
+               'YLabel:\n' + \
+               self.YLabel
 
-	def getNum(self):
-		return self.X.shape[0]
+    def getNum(self):
+        return self.X.shape[0]
 
-	def getDim(self):
-		return self.X.shape[1]
+    def getDim(self):
+        return self.X.shape[1]
 
-	def getDataShape(self):
-		xsd = np.std(self.X, axis=0).flatten().tolist()
-		xmin = np.amin(self.X, axis=0).flatten().tolist()
-		xmax = np.amax(self.X, axis=0).flatten().tolist()
-		ysd = np.std(self.Y)
-		return {
-			'x_sd':  xsd,
-			'x_min': xmin,
-			'x_max': xmax,
-			'y_sd':  ysd
-		}
+    def getDataShape(self):
+        xsd = np.std(self.X, axis=0).flatten().tolist()
+        xmin = np.amin(self.X, axis=0).flatten().tolist()
+        xmax = np.amax(self.X, axis=0).flatten().tolist()
+        ysd = np.std(self.Y)
+        return {
+            'x_sd':  xsd,
+            'x_min': xmin,
+            'x_max': xmax,
+            'y_sd':  ysd
+        }
+
+    def getTrainTestSplits(self, k):
+        """
+        Split dataset into training sets and validation sets for k-fold
+        cross-validation. When k = 1 the dataset is not partitioned -- the
+        entire set is used for both training and testing.
+
+        :param k: desired number of blocks after the split
+        :returns: tuple(X, Y, XT, YT), where T stands for 'test' and each entry
+        is a list of k numpy arrays
+        """
+        assert k > 0, "k must be a positive integer"
+        assert k <= self.getNum(), "k cannot be bigger than the number of data points"
+
+        if k == 1:
+            return [self.X], [self.Y], [self.X], [self.Y]
+        else:
+            X, Y, XT, YT = [], [], [], []
+            kf = KFold(self.getNum(), n_folds=k, shuffle=True)
+            for train_ind, test_ind in kf:
+                X.append(self.X[train_ind])
+                Y.append(self.Y[train_ind])
+                XT.append(self.X[test_ind])
+                YT.append(self.Y[test_ind])
+            return X, Y, XT, YT
 

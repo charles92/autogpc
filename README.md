@@ -16,6 +16,7 @@ the [Machine Learning Group](http://mlg.eng.cam.ac.uk/) of
 * [Mayavi](http://docs.enthought.com/mayavi/mayavi/)
 * [MoviePy](http://zulko.github.io/moviepy/)
 * [PyLaTeX](https://github.com/JelteF/PyLaTeX)
+* [scikit-learn](http://scikit-learn.org/)
 
 ## People
 * Qiurui "Charles" He, *author*
