@@ -28,19 +28,19 @@ class GPCSearch(object):
         kernels = [GPCKernel(ff.NoneKernel(), self.data, depth=depth)]
         best = [kernels[0]]
 
-        print "\n\n  Search begins:"
+        print "\n=====\nSearch begins:"
         while depth < self.maxDepth:
             print '\n\ndepth={0}'.format(depth)
             newkernels = []
             for k in kernels:
-                print "  Expanding:"
+                print "\n=====\nExpanding:"
                 print k
                 expanded = k.expand()
                 # print "  Expanded kernels:"
                 # print '\n'.join(k.__repr__() for k in expanded)
                 newkernels.extend(expanded)
 
-            print "  Fully expanded kernel set:"
+            print "\n=====\nFully expanded kernel set:"
             kernels = newkernels
             for k in kernels:
                 k.train()

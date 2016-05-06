@@ -52,6 +52,7 @@ class GPCKernel(object):
         if not isinstance(self.kernel, ff.NoneKernel):
             self.kernel.initialise_params(data_shape=self.data.getDataShape())
 
+
     def __repr__(self):
         kernel_str = self.kernel.pretty_print()
         if isinstance(kernel_str, Exception):
@@ -59,6 +60,7 @@ class GPCKernel(object):
         return 'GPCKernel: depth = %d, NLML = %f\n' % \
                (self.depth, self.getNLML()) + \
                kernel_str
+
 
     def equals(self, other, strict=False, canonical=True):
         """
@@ -71,6 +73,7 @@ class GPCKernel(object):
         :returns: True if the two kernels are equivalent, False otherwise
         """
         return isKernelEqual(self.kernel, other.kernel, compare_params=strict, use_canonical=canonical)
+
 
     def expand(self, base_kernels='SE'):
         """
@@ -87,6 +90,7 @@ class GPCKernel(object):
         kernels = [k for k in kernels if not isinstance(k, ff.NoneKernel)]
         kernels = [GPCKernel(k, self.data, self.depth + 1) for k in kernels]
         return kernels
+
 
     def reset(self):
         """
@@ -134,10 +138,11 @@ class GPCKernel(object):
             results = [self.trainFull(X[i], Y[i], XT=XT[i], YT=YT[i], randomise=randomise) for i in xrange(restart)]
 
         if len(results) > 0:
+            med = len(results) / 2
             sorted(results, key=lambda x: x['error'])
-            self.model = results[0]['model']
+            self.model = results[med]['model']
             self.kernel = gpy2gpss(self.model.kern)
-            self.cvError = results[0]['error']
+            self.cvError = results[med]['error']
         else:
             print "Warning: none of the %d optimisation attempts were successful." % restart
 

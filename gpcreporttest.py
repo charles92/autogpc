@@ -7,13 +7,17 @@ from gpcdata import GPCData
 from gpcreport import GPCReport
 from gpcsearch import GPCSearch
 
+# data = pods.datasets.pima()
+# X = data['X'][0:300,0:5]
+# Y = data['Y'][0:300]
+
 data = pods.datasets.crescent_data(seed=498)
 X = data['X']
 Y = data['Y']
 Y[Y.flatten() == -1] = 0
-X2 = X + np.random.randn(*X.shape)
-d = GPCData(np.hstack((X, X2)), Y)
-print "Data size = %d" % (d.getDim() * d.getNum())
+# X2 = X + np.random.randn(*X.shape)
+d = GPCData(X, Y)
+print "Data size: D = %d, N = %d." % (d.getDim(), d.getNum())
 
 search = GPCSearch(data=d, max_depth=2, beam_width=2)
 results = search.search()
