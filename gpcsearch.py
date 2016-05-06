@@ -47,7 +47,7 @@ class GPCSearch(object):
             print '\n'.join(k.__repr__() for k in kernels)
 
             kernels = sorted(kernels, key=lambda x: x.getCvError())
-            if len(kernels) == 0 or kernels[0].getNLML() > best[-1].getNLML():
+            if len(kernels) == 0 or kernels[0].getCvError() >= best[-1].getCvError():
                 break
 
             best.append(kernels[0])
