@@ -7,6 +7,11 @@ Created November 2012
 @authors: James Robert Lloyd (jrl44@cam.ac.uk)
           David Duvenaud (dkd23@cam.ac.uk)
           Roger Grosse (rgrosse@mit.edu)
+
+--
+Modified by Qiurui He (qh219@cam.ac.uk)
+
+May 2016
 """
 
 from __future__ import division
@@ -1043,7 +1048,7 @@ class SqExpKernel(Kernel):
                (self.dimension, self.lengthscale, self.sf)
 
     def pretty_print(self):
-        return colored('SE(dim=%s, ell=%s, sf=%s)' % \
+        return colored('SE(d=%s, l=%s, sf=%s)' % \
                (self.dimension, \
                 format_if_possible('%1.1f', self.lengthscale), \
                 format_if_possible('%1.1f', self.sf)), \
@@ -1105,7 +1110,7 @@ class RQKernel(Kernel):
                (self.dimension, self.lengthscale, self.sf, self.alpha)
 
     def pretty_print(self):
-        return colored('RQ(dim=%s, ell=%s, sf=%s, alpha=%s)' % \
+        return colored('RQ(d=%s, l=%s, sf=%s, a=%s)' % \
                (self.dimension, \
                 format_if_possible('%1.1f', self.lengthscale), \
                 format_if_possible('%1.1f', self.sf), \
@@ -1184,7 +1189,7 @@ class PeriodicKernel(Kernel):
                (self.dimension, self.lengthscale, self.period, self.sf)
 
     def pretty_print(self):
-        return colored('Per(dim=%s, ell=%s, per=%s, sf=%s)' % \
+        return colored('Per(d=%s, l=%s, p=%s, sf=%s)' % \
                (self.dimension, \
                 format_if_possible('%1.1f', self.lengthscale), \
                 format_if_possible('%1.1f', self.period), \
@@ -1259,7 +1264,7 @@ class PeriodicKernelOLD(Kernel):
                (self.dimension, self.lengthscale, self.period, self.sf)
 
     def pretty_print(self):
-        return colored('PerOLD(dim=%s, ell=%s, per=%s, sf=%s)' % \
+        return colored('PerOLD(d=%s, l=%s, p=%s, sf=%s)' % \
                (self.dimension, \
                 format_if_possible('%1.1f', self.lengthscale), \
                 format_if_possible('%1.1f', self.period), \
@@ -1326,7 +1331,7 @@ class LinearKernel(Kernel):
                (self.dimension, self.location, self.sf)
 
     def pretty_print(self):
-        return colored('Lin(dim=%s, loc=%s, sf=%s)' % \
+        return colored('Lin(d=%s, loc=%s, sf=%s)' % \
                (self.dimension, \
                 format_if_possible('%1.1f', self.location), \
                 format_if_possible('%1.1f', self.sf)), \
@@ -1391,7 +1396,7 @@ class LinearKernelOLD(Kernel):
                (self.dimension, self.location, self.invsf, self.offset)
 
     def pretty_print(self):
-        return colored('LinOLD(dim=%s, loc=%s, invsf=%s, off=%s)' % \
+        return colored('LinOLD(d=%s, loc=%s, invsf=%s, off=%s)' % \
                (self.dimension, \
                 format_if_possible('%1.1f', self.location), \
                 format_if_possible('%1.1f', self.invsf), \
@@ -1470,7 +1475,7 @@ class SpectralKernel(Kernel):
                (self.dimension, self.lengthscale, self.period, self.sf)
 
     def pretty_print(self):
-        return colored('SP(dim=%s, ell=%s, per=%s, sf=%s)' % \
+        return colored('SP(d=%s, l=%s, p=%s, sf=%s)' % \
                (self.dimension, \
                 format_if_possible('%1.1f', self.lengthscale), \
                 format_if_possible('%1.1f', self.period), \
@@ -1759,7 +1764,7 @@ class ChangePointKernel(Kernel):
                 (self.dimension, self.location, self.steepness, '[ ' + ', '.join([o.__repr__() for o in self.operands]) + ' ]')
 
     def pretty_print(self):
-        return colored('CP(dim=%s, loc=%s, steep=%s, ' % \
+        return colored('CP(d=%s, loc=%s, steep=%s, ' % \
                (self.dimension, format_if_possible('%1.1f', self.location), format_if_possible('%1.1f', self.steepness)), self.depth) + \
                 self.operands[0].pretty_print() + \
                 colored(', ', self.depth) + \
@@ -1872,7 +1877,7 @@ class ChangeWindowKernel(Kernel):
                 (self.dimension, self.location, self.steepness, self.width, '[ ' + ', '.join([o.__repr__() for o in self.operands]) + ' ]')
 
     def pretty_print(self):
-        return colored('CW(dim=%s, loc=%s, steep=%s, width=%s, ' % \
+        return colored('CW(d=%s, loc=%s, steep=%s, width=%s, ' % \
                (self.dimension, format_if_possible('%1.1f', self.location), format_if_possible('%1.1f', self.steepness), format_if_possible('%1.1f', self.width)), self.depth) + \
                 self.operands[0].pretty_print() + \
                 colored(', ', self.depth) + \
