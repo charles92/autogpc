@@ -57,8 +57,8 @@ class GPCKernel(object):
         kernel_str = self.kernel.pretty_print()
         if isinstance(kernel_str, Exception):
             kernel_str = "No Expression"
-        return 'GPCKernel: depth = %d, NLML = %f\n' % \
-               (self.depth, self.getNLML()) + \
+        return 'GPCKernel: depth = %d, NLML = %f, CV error = %.4f\n' % \
+               (self.depth, self.getNLML(), self.getCvError()) + \
                kernel_str
 
 
@@ -103,48 +103,52 @@ class GPCKernel(object):
         self.cvError = None
 
 
-    def train(self, mode='auto', restart=5):
+    def train(self, mode='auto', n_folds=5):
         """
-        Train a GP classification model
+        Train a GP classification model using k-fold cross-validation and random
+        restart
 
         :param mode: 'full' for full GP, 'svgp' for scalable variational GP,
         'auto' for automatically selected model (default)
         :type mode: str
-        :param restart: number of random restarts. If None, use current model
-        hyperparameters as initial values; if `restart` is an integer, always
-        randomise the initialisation before training, even if `restart` is 1
-        :type restart: None or int
+        :param n_folds: number of folds. If None, use current model
+        hyperparameters as initial values; if `n_folds` is an integer, always
+        randomise the initialisation before training, even if `n_folds` is 1
+        :type n_folds: None or int
         """
         mode = mode.lower()
         assert mode in set(['full', 'svgp', 'auto']), "mode must be 'full', 'svgp' or 'auto'"
-        assert restart is None or (isinstance(restart, int) and restart > 0), "restart must be None or positive integer"
+        assert n_folds is None or (isinstance(n_folds, int) and n_folds > 0), "n_folds must be None or positive integer"
 
         # Configure GP mode
+        # TODO: threshold of data quantity for using SVGP instead of full inference
         if mode == 'auto':
             mode = 'full' if (self.data.getDim() * self.data.getNum() <= 4e3) else 'svgp'
         self.isSparse = mode == 'svgp'
 
-        # Configure restarts and randomisation
-        randomise = restart is not None
-        if restart is None: restart = 1
+        # Configure k-fold cross-validation and randomisation
+        randomise = n_folds is not None
+        if n_folds is None: n_folds = 1
 
         # Split dataset into training and validation sets
-        X, Y, XT, YT = self.data.getTrainTestSplits(restart)
+        X, Y, XT, YT = self.data.getTrainTestSplits(n_folds)
 
         # Train the appropriate GP model
         if self.isSparse:
-            results = [self.trainSVGP(X[i], Y[i], XT=XT[i], YT=YT[i], randomise=randomise) for i in xrange(restart)]
+            results = [self.trainSVGP(X[i], Y[i], XT=XT[i], YT=YT[i], randomise=randomise) for i in xrange(n_folds)]
         else:
-            results = [self.trainFull(X[i], Y[i], XT=XT[i], YT=YT[i], randomise=randomise) for i in xrange(restart)]
+            results = [self.trainFull(X[i], Y[i], XT=XT[i], YT=YT[i], randomise=randomise) for i in xrange(n_folds)]
 
+        # Use kernel with median cross-validated error rate in a k-fold test
+        # Record mean cross-validated error rate as overall performance
         if len(results) > 0:
             med = len(results) / 2
             sorted(results, key=lambda x: x['error'])
             self.model = results[med]['model']
             self.kernel = gpy2gpss(self.model.kern)
-            self.cvError = results[med]['error']
+            self.cvError = np.mean([x['error'] for x in results])
         else:
-            print "Warning: none of the %d optimisation attempts were successful." % restart
+            print "Warning: none of the %d optimisation attempts were successful." % n_folds
 
 
     def trainFull(self, X, Y, XT=None, YT=None, randomise=False):
@@ -275,10 +279,14 @@ class GPCKernel(object):
         """
         :returns: negative log marginal likelihood
         """
-        if self.model is not None:
-            return -self.model.log_likelihood()
-        else:
-            return float("inf")
+        return float("inf") if self.model is None else -self.model.log_likelihood()
+
+
+    def getCvError(self):
+        """
+        :returns: cross-validated training error rate
+        """
+        return 1.0 if self.cvError is None else self.cvError
 
 
     def getActiveDims(self):
