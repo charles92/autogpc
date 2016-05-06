@@ -1,6 +1,7 @@
 # Copyright (c) 2015, Qiurui He
 # Department of Engineering, University of Cambridge
 
+import itertools as it
 import numpy as np
 import flexible_function as ff      # GPSS kernel definitions
 import grammar                      # GPSS kernel expansion
@@ -37,15 +38,18 @@ class GPCKernel(object):
     https://github.com/jamesrobertlloyd/gpss-research
     """
 
-    def __init__(self, gpssKernel, data, depth=0):
+    def __init__(self, gpssKernel, data, depth=0, parent=None):
         """
         :param gpssKernel: a GPSS kernel as defined in flexible_function.py
         :param data: object of type GPCData which the kernel works on
         :param depth: depth of the current node in the search tree (root is 0)
+        :param parent: the parent GPCKernel object (for back-tracking)
         """
         self.kernel = gpssKernel
         self.data = data
         self.depth = depth
+        self.parent = parent
+
         self.model = None
         self.isSparse = None
         self.cvError = None
@@ -56,9 +60,9 @@ class GPCKernel(object):
     def __repr__(self):
         kernel_str = self.kernel.pretty_print()
         if isinstance(kernel_str, Exception):
-            kernel_str = "No Expression"
+            kernel_str = "NoneKernel"
         return 'GPCKernel: depth = %d, NLML = %f, CV error = %.4f\n' % \
-               (self.depth, self.getNLML(), self.getCvError()) + \
+               (self.depth, self.getNLML(), self.getCvError()) + '  ' + \
                kernel_str
 
 
@@ -88,7 +92,7 @@ class GPCKernel(object):
         kernels = [k.simplified() for k in kernels]
         kernels = ff.remove_duplicates(kernels)
         kernels = [k for k in kernels if not isinstance(k, ff.NoneKernel)]
-        kernels = [GPCKernel(k, self.data, self.depth + 1) for k in kernels]
+        kernels = [GPCKernel(k, self.data, depth=self.depth+1, parent=self) for k in kernels]
         return kernels
 
 
@@ -308,6 +312,12 @@ class GPCKernel(object):
         return gpss2gpy(self.kernel)
 
 
+##############################################
+#                                            #
+#             Helper Functions               #
+#                                            #
+##############################################
+
 def gpss2gpy(kernel):
     """
     Convert a GPSS kernel to a GPy kernel recursively.
@@ -471,3 +481,4 @@ def isKernelEqual(k1, k2, compare_params=False, use_canonical=True):
     else:
         raise NotImplementedError("Cannot compare kernels of type " \
             + type(k1).__name__ + " and " + type(k2).__name__)
+

@@ -30,20 +30,18 @@ class GPCSearch(object):
 
         print "\n=====\nSearch begins:"
         while depth < self.maxDepth:
-            print '\n\ndepth={0}'.format(depth)
             newkernels = []
+            print "\n=====\nExpanding:"
             for k in kernels:
-                print "\n=====\nExpanding:"
                 print k
-                expanded = k.expand()
-                # print "  Expanded kernels:"
-                # print '\n'.join(k.__repr__() for k in expanded)
+                # Enforce new dimensions to be added each time
+                expanded = [x for x in k.expand() if len(x.getActiveDims()) > depth]
                 newkernels.extend(expanded)
 
-            print "\n=====\nFully expanded kernel set:"
             kernels = newkernels
             for k in kernels:
                 k.train()
+            print "\n=====\nFully expanded kernel set at depth {0}:".format(depth+1)
             print '\n'.join(k.__repr__() for k in kernels)
 
             kernels = sorted(kernels, key=lambda x: x.getCvError())
@@ -55,4 +53,12 @@ class GPCSearch(object):
                 kernels = kernels[:self.beamWidth]
             depth = depth + 1
 
+        print "\n=====\nSearch completed. Best kernels at each depth:"
+        for k in best:
+            print k
+        print "\n=====\nBack-tracking:"
+        k = best[-1]
+        while k.depth > 0:
+            print k
+            k = k.parent
         return best
