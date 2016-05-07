@@ -70,13 +70,40 @@ class GPCKernel(object):
         """
         Check if this kernel is equivalent to another kernel.
 
-        :param other: kernel of type GPCKernel which is to be compared
+        :param other: kernel of type `GPCKernel` which is to be compared
         :param strict: check the equality of hyperparameters; default to False
         :param canonical: convert the kernel to canonical form before comparison;
         default to True
         :returns: True if the two kernels are equivalent, False otherwise
         """
         return isKernelEqual(self.kernel, other.kernel, compare_params=strict, use_canonical=canonical)
+
+
+    def add(self, other):
+        """
+        Create a sum kernel by adding another kernel to the current kernel.
+
+        :param other: `GPCKernel` object to be added to the current kernel
+        :returns: `GPCKernel` object representing the sum kernel
+        """
+        k = self.kernel + other.kernel
+        ret = GPCKernel(k, self.data)
+
+        X, Y = self.data.X, self.data.Y
+        ker = gpss2gpy(k)
+        ret.isSparse = self.isSparse
+        if ret.isSparse:
+            # TODO: inherit number of inducing points from parent
+            inducing = 10
+            i = np.random.permutation(X.shape[0])[:inducing]
+            Z = X[i].copy()
+            lik = GPy.likelihoods.Bernoulli()
+            ret.model = GPy.core.SVGP(X, Y, Z, ker, lik)
+        else:
+            ret.model = GPy.models.GPClassification(X, Y, kernel=ker)
+        ret.cvError = ret.misclassifiedPoints()['X'].shape[0] / float(X.shape[0])
+
+        return ret
 
 
     def expand(self, base_kernels='SE'):
@@ -88,7 +115,9 @@ class GPCKernel(object):
         g = grammar.MultiDGrammar(ndim, base_kernels=base_kernels, rules=None)
         kernels = grammar.expand(self.kernel, g)
         kernels = [k.canonical() for k in kernels]
-        map(lambda k: k.initialise_params(data_shape=self.data.getDataShape()), kernels)
+        kernels = ff.remove_duplicates(kernels)
+        for k in kernels:
+            k.initialise_params(data_shape=self.data.getDataShape())
         kernels = [k.simplified() for k in kernels]
         kernels = ff.remove_duplicates(kernels)
         kernels = [k for k in kernels if not isinstance(k, ff.NoneKernel)]
@@ -234,9 +263,43 @@ class GPCKernel(object):
         }
 
 
+    def toSummands(self):
+        """
+        Convert to sum of products
+
+        :returns: list of GPCKernel objects which are additive components of
+        the current kernel
+        """
+        k = self.kernel.additive_form()
+        if isinstance(k, ff.SumKernel):
+            summands = [GPCKernel(o, self.data) for o in k.operands]
+        else:
+            summands = [GPCKernel(k, self.data)]
+
+        X, Y = self.data.X, self.data.Y
+        for s in summands:
+            s.isSparse = self.isSparse
+
+            ker = gpss2gpy(s.kernel)
+            if s.isSparse:
+                # TODO: inherit number of inducing points from parent
+                inducing = 10
+                i = np.random.permutation(X.shape[0])[:inducing]
+                Z = X[i].copy()
+                lik = GPy.likelihoods.Bernoulli()
+                s.model = GPy.core.SVGP(X, Y, Z, ker, lik)
+            else:
+                s.model = GPy.models.GPClassification(X, Y, kernel=ker)
+
+            s.cvError = s.misclassifiedPoints()['X'].shape[0] / float(X.shape[0])
+
+        return summands
+
+
     def draw(self, filename, active_dims_only=False, draw_posterior=True):
         """
         Plot the model and data points
+
         :param filename: the output file (path and) name, without extension
         :param active_dims_only: True if want to present only the active
         dimensions (defaults to False)
@@ -482,3 +545,28 @@ def isKernelEqual(k1, k2, compare_params=False, use_canonical=True):
         raise NotImplementedError("Cannot compare kernels of type " \
             + type(k1).__name__ + " and " + type(k2).__name__)
 
+
+def cumulateAdditiveKernels(summands):
+    """
+    Incrementally cumulate additive components of a kernel, producing the full
+    kernel in the end.
+
+    :param summands: list of GPCKernel objects to be cumulated
+    """
+    # Sort in descending order of cross-validated training error
+    terms = sorted(summands, key=lambda k: k.cvError, reverse=True)
+    ker = terms.pop()
+    cum = ker
+    kers = [ker]
+    cums = [cum]
+
+    # Progressively include more additive components according to the cross-
+    # validated training error of the cumulated additive kernel
+    while len(terms) > 0:
+        terms = sorted(terms, key=lambda k: cum.add(k).cvError, reverse=True)
+        ker = terms.pop()
+        cum = cum.add(ker)
+        kers.append(ker)
+        cums.append(cum)
+
+    return kers, cums

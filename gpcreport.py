@@ -5,6 +5,8 @@ import numpy as np
 import pylatex as pl
 import pylatex.utils as ut
 import os
+from gpckernel import GPCKernel
+from gpckernel import cumulateAdditiveKernels
 
 class GPCReport(object):
     """
@@ -14,6 +16,10 @@ class GPCReport(object):
     def __init__(self, root='./latex', paper='a4paper', history=None):
         self.root = root
         self.doc = pl.Document()
+        self.history = history
+
+        summands = self.history[-1].toSummands()
+        self.kers, self.cums = cumulateAdditiveKernels(summands)
 
         self.makePreamble(paper=paper)
         self.makeDataSummary(search_history=history) # Note: history[0] is NoneKernel
@@ -76,11 +82,6 @@ class GPCReport(object):
         data = kern.data
         dataShape = data.getDataShape()
 
-        imgName = 'separable1'
-        imgFormat = '.eps' if data.getDim() != 3 else '.png'
-        imgOutName = imgName + imgFormat
-        kern.draw(os.path.join(self.root, imgName), active_dims_only=True)
-
         separableDim = kern.getActiveDims()[0]
         separableDimLabel = data.XLabel[separableDim]
         errorRate = kern.getCvError() * 100
@@ -91,11 +92,7 @@ class GPCReport(object):
             s = s + r"The cross-validated training error rate is {0:.1f}\%.".format(errorRate)
 
             doc.append(ut.NoEscape(s))
-
-            with doc.create(pl.Figure(position='h!')) as fig:
-                fig.add_image(imgOutName)
-                caption_str = r"The most separable dimension is ``{0}''.".format(separableDimLabel)
-                fig.add_caption(ut.NoEscape(caption_str))
+            self.makeInteractionFigure(self.kers[0], self.cums[0], 1)
 
 
     def makeNextSeparableDimensionSection(self, search_history=None):
@@ -105,11 +102,6 @@ class GPCReport(object):
         doc = self.doc
         data = kern.data
         dataShape = data.getDataShape()
-
-        imgName = 'separable2'
-        imgFormat = '.eps' if data.getDim() != 3 else '.png'
-        imgOutName = imgName + imgFormat
-        kern.draw(os.path.join(self.root, imgName), active_dims_only=True)
 
         prevKern = search_history[1]
         prevDim = prevKern.getActiveDims()[0]
@@ -128,10 +120,62 @@ class GPCReport(object):
             s = s + r"The result is shown in the figure below, with predictive posterior probabilities. "
 
             doc.append(ut.NoEscape(s))
+            self.makeInteractionFigure(self.kers[1], self.cums[1], 2)
+
+
+    def makeInteractionFigure(self, ker, cum, n_terms):
+        """
+        Create figure for interaction analysis, which includes a subfigure of
+        the latest additive component and a subfigure of posterior of the overall
+        compositional kernel up to now.
+
+        :param ker: latest additive component to be plotted
+        :type ker: GPCKernel
+        :param cum: overall compositional kernel up to and including `ker`
+        :type cum: GPCKernel
+        :param n_terms: number of additive terms considered in `cum` so far
+        """
+        assert isinstance(ker, GPCKernel)
+        assert isinstance(cum, GPCKernel)
+
+        doc = self.doc
+        kerDims = ker.getActiveDims()
+        cumDims = cum.getActiveDims()
+
+        img1Name = 'additiveterm{0}ker'.format(n_terms)
+        img1Format = '.eps' if len(kerDims) != 3 else '.png'
+        img1Filename = img1Name + img1Format
+        ker.draw(os.path.join(self.root, img1Name), active_dims_only=True)
+
+        if n_terms == 1 or len(cumDims) > 3:
+            # Only present current additive component
+            caption_str = r"Trained classifier on " + dims2text(kerDims, ker.data) + "."
+            with doc.create(pl.Figure(position='h!')) as fig:
+                fig.add_image(img1Filename, width=ut.NoEscape(r'0.5\textwidth'))
+                fig.add_caption(ut.NoEscape(caption_str))
+
+        else:
+            # Present both current component and cumulative kernel
+            img2Name = 'additiveterm{0}cum'.format(n_terms)
+            img2Format = '.eps' if len(cumDims) != 3 else '.png'
+            img2Filename = img2Name + img2Format
+            cum.draw(os.path.join(self.root, img2Name), active_dims_only=True)
+            caption1_str = r"Current additive component involving " + dims2text(kerDims, ker.data) + "."
+            caption2_str = r"Cumulative performance up to now, involving " + dims2text(cumDims, cum.data) + "."
+            caption_str = r"Trained classifier on " + dims2text(cumDims, cum.data) + "."
 
             with doc.create(pl.Figure(position='h!')) as fig:
-                fig.add_image(imgOutName)
-                caption_str = r"Trained classifier with two dimensions: ``{0}'' and ``{1}''.".format(prevDimLabel, thisDimLabel)
+                with doc.create(pl.SubFigure(
+                    position='b',
+                    width=ut.NoEscape(r'0.45\textwidth') )) as subfig1:
+                    subfig1.add_image(img1Filename, width=ut.NoEscape(r'\textwidth'))
+                    subfig1.add_caption(ut.NoEscape(caption1_str))
+                doc.append(ut.NoEscape(r'\hfill'))
+                with doc.create(pl.SubFigure(
+                    position='b',
+                    width=ut.NoEscape(r'0.45\textwidth') )) as subfig2:
+                    subfig2.add_image(img2Filename, width=ut.NoEscape(r'\textwidth'))
+                    subfig2.add_caption(ut.NoEscape(caption2_str))
                 fig.add_caption(ut.NoEscape(caption_str))
 
 
@@ -139,3 +183,30 @@ class GPCReport(object):
         if filename is None:
             filename = 'report'
         self.doc.generate_pdf(os.path.join(self.root, filename))
+
+
+##############################################
+#                                            #
+#             Helper Functions               #
+#                                            #
+##############################################
+
+def dims2text(dims, data):
+    """
+    Convert a list of dimensions to their names
+
+    :param dims: list of dimensions (i.e. integers)
+    :param data: `GPCData` object
+    """
+    assert len(dims) > 0, 'The list of dimensions must contain at least one member.'
+
+    xl = data.XLabel
+    if len(dims) == 1:
+        return r"variable ``{0}''".format(xl[dims[0]])
+    else:
+        text = "variables "
+        for i in range(len(dims) - 2):
+            text = text + r"``{0}'', ".format(xl[dims[i]])
+        text = text + r"``{0}'' and ``{1}''".format(xl[dims[-2]],xl[dims[-1]])
+
+    return text

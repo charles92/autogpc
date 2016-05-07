@@ -5,6 +5,7 @@ import numpy as np
 import Queue as Q
 import flexible_function as ff
 from gpckernel import GPCKernel
+from gpckernel import cumulateAdditiveKernels
 from gpcdata import GPCData
 
 
@@ -61,4 +62,16 @@ class GPCSearch(object):
         while k.depth > 0:
             print k
             k = k.parent
+        print "\n=====\nSummands:"
+        summands = best[-1].toSummands()
+        for k in summands:
+            print k
+        print "\n=====\nCumulative:"
+        kers, cums = cumulateAdditiveKernels(summands)
+        for i in range(len(kers)):
+            print 'Component {0}'.format(i + 1)
+            print kers[i]
+            print cums[i]
+        print "\n"
+
         return best
