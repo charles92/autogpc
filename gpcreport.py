@@ -22,16 +22,13 @@ class GPCReport(object):
         self.kers, self.cums = cumulateAdditiveKernels(summands)
 
         self.makePreamble(paper=paper)
-        self.makeDataSummary(search_history=history) # Note: history[0] is NoneKernel
-        self.makeMostSeparableDimensionSection(search_history=history)
-        if len(history) > 2:
-            self.makeNextSeparableDimensionSection(search_history=history)
+        self.describeAdditiveComponents()
 
 
     def makePreamble(self, paper='a4paper'):
         doc = self.doc
 
-        doc.packages.append(pl.Package('geometry', options=['a4paper', 'margin=1.5in']))
+        doc.packages.append(pl.Package('geometry', options=['a4paper', 'margin=1.2in']))
         doc.packages.append(pl.Package('hyperref'))
         doc.packages.append(pl.Package('babel', options=['UKenglish']))
         doc.packages.append(pl.Package('isodate', options=['UKenglish']))
@@ -74,53 +71,62 @@ class GPCReport(object):
                 fig.add_caption(r"The input dataset.")
 
 
-    def makeMostSeparableDimensionSection(self, search_history=None):
-        assert isinstance(search_history, list) and len(search_history) > 1, \
-            'search_history must be a list containing >=2 GPCKernel instances'
-        kern = search_history[1]
+    def describeOneAdditiveComponent(self, term):
+        """
+        Generate a subsection that describes one additive component.
+
+        :param term: term to be analysed
+        :type term: integer
+        """
+        ker, cum = self.kers[term - 1], self.cums[term - 1]
+        data = ker.data
+        kdims = ker.getActiveDims()
+        error = cum.getCvError()
+        if term > 1: delta = self.cums[term - 2].getCvError() - error
+        nlml = cum.getNLML()
+
         doc = self.doc
-        data = kern.data
-        dataShape = data.getDataShape()
+        with doc.create(pl.Subsection("Component {0}".format(term))):
+            if term == 1:
+                s = r"With only one additive component, the GP classifier can achieve " \
+                  + r"a cross-validated training error rate of {0:.2f}\%. ".format(error * 100) \
+                  + r"The corresponding negative log marginal likelihood is {0:.2f}. ".format(nlml)
+                doc.append(ut.NoEscape(s))
 
-        separableDim = kern.getActiveDims()[0]
-        separableDimLabel = data.XLabel[separableDim]
-        errorRate = kern.getCvError() * 100
+                s = r"This component operates on " + dims2text(kdims, data) + ", " \
+                  + r"as shown in the figure below. "
+                doc.append(ut.NoEscape(s))
 
-        with doc.create(pl.Section("The Most Separable Dimension")):
-            s = r"The dataset is most separable in the ``{0}'' dimension, ".format(separableDimLabel)
-            s = s + r"as shown in the figure. "
-            s = s + r"The cross-validated training error rate is {0:.1f}\%.".format(errorRate)
+            else:
+                s = r"With {0} additive components, the cross-validated training error ".format(term) \
+                  + r"can be reduced by {0:.2f}\% to {1:.2f}\%. ".format(delta * 100, error * 100) \
+                  + r"The corresponding negative log marginal likelihood is {0:.2f}. ".format(nlml)
+                doc.append(ut.NoEscape(s))
 
-            doc.append(ut.NoEscape(s))
-            self.makeInteractionFigure(self.kers[0], self.cums[0], 1)
+                s = r"The additional component operates on " + dims2text(kdims, data) + ", " \
+                  + r"as shown in the figure below. "
+                doc.append(ut.NoEscape(s))
+
+            self.makeInteractionFigure(ker, cum, term)
 
 
-    def makeNextSeparableDimensionSection(self, search_history=None):
-        assert isinstance(search_history, list) and len(search_history) > 2, \
-            'search_history must be a list containing >=3 GPCKernel instances'
-        kern = search_history[2]
+    def describeAdditiveComponents(self):
+        """
+        Generate a section describing all additive components present.
+        """
+        n_terms = len(self.kers)
+        error = self.cums[-1].getCvError()
         doc = self.doc
-        data = kern.data
-        dataShape = data.getDataShape()
-
-        prevKern = search_history[1]
-        prevDim = prevKern.getActiveDims()[0]
-        prevDimLabel = data.XLabel[prevDim]
-        prevErrorRate = prevKern.getCvError() * 100
-
-        thisDim = (set(kern.getActiveDims()) - set([prevDim])).pop()
-        thisDimLabel = data.XLabel[thisDim]
-        thisErrorRate = kern.getCvError() * 100
-
-        diffErrorRate = prevErrorRate - thisErrorRate
-
-        with doc.create(pl.Section("The Next Separable Dimension")):
-            s = r"The classification performance can be improved by incorporating the ``{0}'' variable in addition to the ``{1}'' variable. ".format(thisDimLabel, prevDimLabel)
-            s = s + r"This reduces the cross-validated training error rate by {0:.1f}\% to {1:.1f}\%. ".format(diffErrorRate, thisErrorRate)
-            s = s + r"The result is shown in the figure below, with predictive posterior probabilities. "
-
+        with doc.create(pl.Section("Additive Component Analysis")):
+            s = r"The pattern underlying the dataset can be decomposed into " \
+              + r"{0} additive components, ".format(n_terms) \
+              + r"which contribute jointly to the final classifier which we have trained. " \
+              + r"With all components in action, the classifier can achieve " \
+              + r"a cross-validated training error rate of {0:.2f}\%. ".format(error * 100) \
+              + r"The performance cannot be further improved by adding more components. "
             doc.append(ut.NoEscape(s))
-            self.makeInteractionFigure(self.kers[1], self.cums[1], 2)
+            for i in range(1, n_terms + 1):
+                self.describeOneAdditiveComponent(i)
 
 
     def makeInteractionFigure(self, ker, cum, n_terms):
@@ -161,7 +167,7 @@ class GPCReport(object):
             img2Filename = img2Name + img2Format
             cum.draw(os.path.join(self.root, img2Name), active_dims_only=True)
             caption1_str = r"Current additive component involving " + dims2text(kerDims, ker.data) + "."
-            caption2_str = r"Cumulative performance up to now, involving " + dims2text(cumDims, cum.data) + "."
+            caption2_str = r"Previous and current components combined, involving " + dims2text(cumDims, cum.data) + "."
             caption_str = r"Trained classifier on " + dims2text(cumDims, cum.data) + "."
 
             with doc.create(pl.Figure(position='h!')) as fig:

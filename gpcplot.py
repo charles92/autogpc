@@ -270,8 +270,8 @@ class GPCPlot3D(GPCPlot):
         # Static view 1
         mlab.view(figure=self.fig, azimuth=45, elevation=60,
             distance='auto', focalpoint='auto',)
-        mlab.savefig(fname + '-1.png', figure=self.fig)
-        print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '-1.png')
+        mlab.savefig(fname + '.png', figure=self.fig)
+        print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.png')
 
         # Static view 2
         mlab.view(figure=self.fig, azimuth=225, elevation=120,
