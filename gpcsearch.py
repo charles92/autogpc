@@ -5,7 +5,6 @@ import numpy as np
 import Queue as Q
 import flexible_function as ff
 from gpckernel import GPCKernel
-from gpckernel import cumulateAdditiveKernels
 from gpcdata import GPCData
 
 

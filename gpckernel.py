@@ -545,28 +545,3 @@ def isKernelEqual(k1, k2, compare_params=False, use_canonical=True):
         raise NotImplementedError("Cannot compare kernels of type " \
             + type(k1).__name__ + " and " + type(k2).__name__)
 
-
-def cumulateAdditiveKernels(summands):
-    """
-    Incrementally cumulate additive components of a kernel, producing the full
-    kernel in the end.
-
-    :param summands: list of GPCKernel objects to be cumulated
-    """
-    # Sort in descending order of cross-validated training error
-    terms = sorted(summands, key=lambda k: k.cvError, reverse=True)
-    ker = terms.pop()
-    cum = ker
-    kers = [ker]
-    cums = [cum]
-
-    # Progressively include more additive components according to the cross-
-    # validated training error of the cumulated additive kernel
-    while len(terms) > 0:
-        terms = sorted(terms, key=lambda k: cum.add(k).cvError, reverse=True)
-        ker = terms.pop()
-        cum = cum.add(ker)
-        kers.append(ker)
-        cums.append(cum)
-
-    return kers, cums

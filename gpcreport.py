@@ -6,7 +6,6 @@ import pylatex as pl
 import pylatex.utils as ut
 import os
 from gpckernel import GPCKernel
-from gpckernel import cumulateAdditiveKernels
 from gpcdata import GPCData
 
 class GPCReport(object):
@@ -219,6 +218,32 @@ def dims2text(dims, data):
     return text
 
 
+def cumulateAdditiveKernels(summands):
+    """
+    Incrementally cumulate additive components of a kernel, producing the full
+    kernel in the end.
+
+    :param summands: list of GPCKernel objects to be cumulated
+    """
+    # Sort in descending order of cross-validated training error
+    terms = sorted(summands, key=lambda k: k.cvError, reverse=True)
+    ker = terms.pop()
+    cum = ker
+    kers = [ker]
+    cums = [cum]
+
+    # Progressively include more additive components according to the cross-
+    # validated training error of the cumulated additive kernel
+    while len(terms) > 0:
+        terms = sorted(terms, key=lambda k: cum.add(k).cvError, reverse=True)
+        ker = terms.pop()
+        cum = cum.add(ker)
+        kers.append(ker)
+        cums.append(cum)
+
+    return kers, cums
+
+
 def testMonotonicity(kernel, margin=0.1):
     """
     Test if a 1-D GP kernel has monotonic posterior mean.
@@ -232,6 +257,9 @@ def testMonotonicity(kernel, margin=0.1):
     """
     assert isinstance(kernel, GPCKernel), 'kernel must be of type GPCKernel'
     assert len(kernel.getActiveDims()) == 1, 'kernel must be one-dimensional'
+
+    if margin < 0: margin = 0
+    if margin > 0.5: margin = 0.5
 
     dim = kernel.getActiveDims()[0]
     x = kernel.data.X[:,dim]
