@@ -217,11 +217,14 @@ class GPCPlot3D(GPCPlot):
 
         # Data points
         pts3d = mlab.points3d(active_X[:,0], active_X[:,1], active_X[:,2], m.Y[:,0],
-            extent=np.vstack((xmin, xmax)).T.flatten(), figure=fig,
-            mode='sphere', vmin=-0.2, vmax=1.2, colormap='jet',
-            scale_mode='none', scale_factor=0.05)
+            extent=[0, 1, 0, 1, 0, 1], figure=fig,
+            mode='cube', vmin=-0.2, vmax=1.2, colormap='jet',
+            scale_mode='none', scale_factor=0.03)
         mlab.outline(pts3d, color=(0.5, 0.5, 0.5))
-        mlab.axes(pts3d, xlabel=self.xlabels[0], ylabel=self.xlabels[1],
+        mlab.axes(pts3d,
+            ranges=np.vstack((xmin, xmax)).T.flatten(),
+            xlabel=self.xlabels[0],
+            ylabel=self.xlabels[1],
             zlabel=self.xlabels[2])
         plots['data'] = pts3d
 
@@ -233,8 +236,10 @@ class GPCPlot3D(GPCPlot):
             mu = m.likelihood.gp_link.transf(mu)
             xx, yy, zz = np.meshgrid(*tuple(xrng[:,i] for i in range(3)), indexing='ij')
             mu = mu.reshape(xx.shape)
-            plots['gpmu'] = mlab.contour3d(xx, yy, zz, mu, figure=fig, colormap='jet',
-                contours=[.1, .5, .9], opacity = 0.25, vmin=0, vmax=1)
+            ctr3d = mlab.contour3d(xx, yy, zz, mu, figure=fig, colormap='jet',
+                contours=[.1, .5, .9], opacity = 0.25, vmin=0, vmax=1,
+                extent=[0, 1, 0, 1, 0, 1])
+            plots['gpmu'] = ctr3d
 
         self.fig = fig
         return plots
