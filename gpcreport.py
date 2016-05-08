@@ -7,6 +7,7 @@ import pylatex.utils as ut
 import os
 from gpckernel import GPCKernel
 from gpckernel import cumulateAdditiveKernels
+from gpcdata import GPCData
 
 class GPCReport(object):
     """
@@ -199,7 +200,7 @@ class GPCReport(object):
 
 def dims2text(dims, data):
     """
-    Convert a list of dimensions to their names
+    Convert a list of dimensions to their names.
 
     :param dims: list of dimensions (i.e. integers)
     :param data: `GPCData` object
@@ -216,3 +217,36 @@ def dims2text(dims, data):
         text = text + r"``{0}'' and ``{1}''".format(xl[dims[-2]],xl[dims[-1]])
 
     return text
+
+
+def testMonotonicity(kernel, margin=0.1):
+    """
+    Test if a 1-D GP kernel has monotonic posterior mean.
+
+    :param kernel: 1-D kernel object to be tested
+    :type kernel: GPCKernel
+    :param margin: fraction of the input range to be discarded on each extreme.
+    We only run tests on the middle part of the input range, as boundary values
+    can have non-monotonic latent function mean values
+    :returns: 1 if increasing, -1 if decreasing, 0 if non-monotonic
+    """
+    assert isinstance(kernel, GPCKernel), 'kernel must be of type GPCKernel'
+    assert len(kernel.getActiveDims()) == 1, 'kernel must be one-dimensional'
+
+    dim = kernel.getActiveDims()[0]
+    x = kernel.data.X[:,dim]
+    xmin, xmax = x.min(), x.max()
+    xlo = xmin + margin * (xmax - xmin)
+    xhi = xmax - margin * (xmax - xmin)
+    x = x[(x >= xlo) & (x <= xhi)].reshape((-1, 1))
+    x.sort(axis=0)
+    dmu_dx, _ = kernel.model.predictive_gradients(x)
+    dmu_dx = dmu_dx.reshape((-1, 1))
+
+    if np.all(dmu_dx > 0):
+        return 1
+    elif np.all(dmu_dx < 0):
+        return -1
+    else:
+        return 0
+
