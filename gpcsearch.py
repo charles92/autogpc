@@ -37,6 +37,8 @@ class GPCSearch(object):
                 # Enforce new dimensions to be added each time
                 expanded = [x for x in k.expand() if len(x.getActiveDims()) > depth]
                 newkernels.extend(expanded)
+            if depth == 0:
+                kernels1d = newkernels
 
             kernels = newkernels
             for k in kernels:
@@ -65,12 +67,41 @@ class GPCSearch(object):
         summands = best[-1].toSummands()
         for k in summands:
             print k
-        print "\n=====\nCumulative:"
-        kers, cums = cumulateAdditiveKernels(summands)
-        for i in range(len(kers)):
-            print 'Component {0}'.format(i + 1)
-            print kers[i]
-            print cums[i]
-        print "\n"
-
+        print "\n=====\nBest 1-D kernels:"
+        for k in bestKernels1D(kernels1d):
+            print k
         return best
+
+
+##############################################
+#                                            #
+#             Helper Functions               #
+#                                            #
+##############################################
+
+def bestKernels1D(kernels):
+    """
+    Select the best 1-D kernels in each dimension according to cross-validated
+    training error rate.
+
+    :param kernels: list of 1-D kernels of type `GPCKernel`
+    :returns: list of best 1-D kernels, ranked by cross-validated training error
+    """
+    if len(kernels) == 0: return []
+    assert all([len(k.getActiveDims()) == 1 for k in kernels]), 'All kernels must be one-dimensional.'
+    data = kernels[0].data
+    ndim = data.getDim()
+
+    # Initialise
+    best1d = [GPCKernel(ff.NoneKernel(), data) for i in range(ndim)]
+
+    # Run through all candidates
+    for k in kernels:
+        dim = k.getActiveDims()[0]
+        if k.getCvError() < best1d[dim].getCvError():
+            best1d[dim] = k
+
+    # Rank by cross-validated training error
+    best1d.sort(key=lambda k: k.getCvError())
+
+    return best1d
