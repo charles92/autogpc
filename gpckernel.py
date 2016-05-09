@@ -164,7 +164,7 @@ class GPCKernel(object):
         if n_folds is None: n_folds = 1
 
         # Split dataset into training and validation sets
-        X, Y, XT, YT = self.data.getTrainTestSplits(n_folds)
+        X, Y, XT, YT = self.data.kFoldSplits(k=n_folds)
 
         # Train the appropriate GP model
         if self.isSparse:

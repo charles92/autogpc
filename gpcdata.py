@@ -25,19 +25,18 @@ class GPCData(object):
         assert Y.ndim == 2 and Y.shape[1] == 1, "Y must be a vector"
         assert Y.shape[0] == X.shape[0], "X and Y must contain the same number of entries"
 
-        # Populate instance fields
-        self.X = X
-        self.Y = Y
+        self.X, self.Y = X, Y
 
+        # Default X, Y labels
         if XLabel is not None and isinstance(XLabel, (list,tuple)) and len(XLabel) == X.shape[1]:
             self.XLabel = tuple(XLabel)
         else:
             self.XLabel = tuple('$x_{{{0}}}$'.format(d + 1) for d in range(X.shape[1]))
-
         if YLabel is not None and isinstance(YLabel, basestring):
             self.YLabel = YLabel
         else:
             self.YLabel = '$y$'
+
 
     def __repr__(self):
         return 'GPCData: %d dimensions, %d data points.\n' % \
@@ -47,11 +46,14 @@ class GPCData(object):
                'YLabel:\n' + \
                self.YLabel
 
+
     def getNum(self):
         return self.X.shape[0]
 
+
     def getDim(self):
         return self.X.shape[1]
+
 
     def getDataShape(self):
         xmu = self.X.mean(axis=0).flatten().tolist()
@@ -67,28 +69,37 @@ class GPCData(object):
             'y_sd':  ysd
         }
 
-    def getTrainTestSplits(self, k):
+
+    def kFoldSplits(self, k=5):
         """
         Split dataset into training sets and validation sets for k-fold
         cross-validation. When k = 1 the dataset is not partitioned -- the
         entire set is used for both training and testing.
+        Result is cached after first called, unless k changes.
 
         :param k: desired number of blocks after the split
         :returns: tuple(X, Y, XT, YT), where T stands for 'test' and each entry
         is a list of k numpy arrays
         """
-        assert k > 0, "k must be a positive integer"
-        assert k <= self.getNum(), "k cannot be bigger than the number of data points"
+        assert k > 0 and k <= self.getNum(), "Invalid number of folds"
 
-        if k == 1:
-            return [self.X], [self.Y], [self.X], [self.Y]
+        if hasattr(self, 'splits') and hasattr(self, 'nFolds') and self.nFolds == k:
+            return self.splits
+
         else:
-            X, Y, XT, YT = [], [], [], []
-            kf = KFold(self.getNum(), n_folds=k, shuffle=True)
-            for train_ind, test_ind in kf:
-                X.append(self.X[train_ind])
-                Y.append(self.Y[train_ind])
-                XT.append(self.X[test_ind])
-                YT.append(self.Y[test_ind])
-            return X, Y, XT, YT
+            if k == 1:
+                ret = [self.X], [self.Y], [self.X], [self.Y]
+            else:
+                X, Y, XT, YT = [], [], [], []
+                kf = KFold(self.getNum(), n_folds=k, shuffle=True)
+                for train_ind, test_ind in kf:
+                    X.append(self.X[train_ind])
+                    Y.append(self.Y[train_ind])
+                    XT.append(self.X[test_ind])
+                    YT.append(self.Y[test_ind])
+                ret = X, Y, XT, YT
+
+            self.splits = ret
+            self.nFolds = k
+            return ret
 
