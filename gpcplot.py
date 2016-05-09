@@ -132,11 +132,12 @@ class GPCPlot2D(GPCPlot):
             usetex = True
         GPCPlot.__init__(self, model, active_dims, xlabels, usetex)
 
-    def draw(self, draw_posterior=True):
+    def draw(self, draw_posterior=True, draw_error=False):
+        draw_error = draw_posterior and draw_error
         m = self.model
         plt.rc('text', usetex=True)
         plots = {}
-        if draw_posterior:
+        if draw_error:
             fig, (ax0, ax1) = plt.subplots(nrows=1, ncols=2, sharex=True, sharey=True)
         else:
             fig, ax0 =  plt.subplots()
@@ -148,14 +149,14 @@ class GPCPlot2D(GPCPlot):
         ax0.set_ylim(xmin[1], xmax[1])
         plt.rc('text', usetex=self.usetex)
         ax0.set_xlabel(self.xlabels[0])
-        if draw_posterior: ax1.set_xlabel(self.xlabels[0])
+        if draw_error: ax1.set_xlabel(self.xlabels[0])
         ax0.set_ylabel(self.xlabels[1])
         plt.rc('text', usetex=True)
 
         # Data points
         plots['data1'] = ax0.scatter(active_X[:,0], active_X[:,1], c=m.Y, marker='o',
             edgecolors='none', alpha=0.2, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
-        if draw_posterior:
+        if draw_error:
             plots['data2'] = ax1.scatter(active_X[:,0], active_X[:,1], c=m.Y, marker='o',
                 edgecolors='none', alpha=0.2, vmin=-0.2, vmax=1.2, cmap=plt.cm.jet)
 
@@ -181,12 +182,13 @@ class GPCPlot2D(GPCPlot):
             plots['gpmu'] = cs
 
             # Latent function - standard deviation
-            sd = sd.reshape(default_res, default_res).T
-            cs = ax1.contour(xrng[:,0], xrng[:,1], sd, default_sd_contours,
-                vmin=-0.5, vmax=max(default_sd_contours), cmap=plt.cm.OrRd)
-            # Add contour labels
-            ax1.clabel(cs, fontsize=8)
-            plots['gpsd'] = cs
+            if draw_error:
+                sd = sd.reshape(default_res, default_res).T
+                cs = ax1.contour(xrng[:,0], xrng[:,1], sd, default_sd_contours,
+                    vmin=-0.5, vmax=max(default_sd_contours), cmap=plt.cm.OrRd)
+                # Add contour labels
+                ax1.clabel(cs, fontsize=8)
+                plots['gpsd'] = cs
 
         self.fig = fig
         return plots
@@ -212,14 +214,20 @@ class GPCPlot3D(GPCPlot):
         fig = mlab.figure(bgcolor=(1, 1, 1), fgcolor=(0, 0, 0), size=(600, 601))
         plots = {}
 
-        active_X = m.X[:,self.active_dims]
-        xmin, xmax, xrng, xgrd = getFrame(active_X, res=32)
+        xpts = m.X[:,self.active_dims]
+        xmin, xmax, xrng, xgrd = getFrame(xpts, res=32)
+
+        # Normalise all axes to [0, 1]
+        for i in range(xpts.shape[1]):
+            xpts[:,i] = (xpts[:,i] - xmin[i]) / float(xmax[i] - xmin[i])
+            xrng[:,i] = (xrng[:,i] - xmin[i]) / float(xmax[i] - xmin[i])
 
         # Data points
-        pts3d = mlab.points3d(active_X[:,0], active_X[:,1], active_X[:,2], m.Y[:,0],
+        marker_scale = np.max(xmax - xmin) * 0.01
+        pts3d = mlab.points3d(xpts[:,0], xpts[:,1], xpts[:,2], m.Y[:,0],
             extent=[0, 1, 0, 1, 0, 1], figure=fig,
-            mode='cube', vmin=-0.2, vmax=1.2, colormap='jet',
-            scale_mode='none', scale_factor=0.03)
+            mode='sphere', vmin=-0.2, vmax=1.2, colormap='jet',
+            scale_mode='none', scale_factor=0.01)
         mlab.outline(pts3d, color=(0.5, 0.5, 0.5))
         mlab.axes(pts3d,
             ranges=np.vstack((xmin, xmax)).T.flatten(),
@@ -380,8 +388,9 @@ def getFrame(X, res=default_res, grid=True):
     xmin, xmax = xmin - margin, xmax + margin
 
     xdim = X.shape[1]
-    xrng = np.vstack(tuple(np.linspace(x1, x2, num=res) \
-        for x1,x2 in zip(xmin,xmax))).T
+    xrng = np.vstack(tuple(
+        np.linspace(x1, x2, num=res) for x1,x2 in zip(xmin,xmax)
+        )).T
 
     if grid:
         xgrd = np.meshgrid(*tuple(xrng[:,i] for i in range(xdim)), indexing='ij')
