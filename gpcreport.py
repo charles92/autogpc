@@ -113,6 +113,16 @@ class GPCReport(object):
                 s = s + "No monotonicity or periodicity is associated with this variable. "
             doc.append(ut.NoEscape(s))
 
+            # Plotting
+            imgName = 'var{0}'.format(dim)
+            imgFormat = '.eps'
+            imgFilename = imgName + imgFormat
+            ker.draw(os.path.join(self.root, imgName), active_dims_only=True)
+            caption_str = r"Trained classifier on " + dims2text([dim], ker.data) + "."
+            with doc.create(pl.Figure(position='h!')) as fig:
+                fig.add_image(imgFilename, width=ut.NoEscape(r'0.5\textwidth'))
+                fig.add_caption(ut.NoEscape(caption_str))
+
 
     def describeVariables(self):
         """
@@ -209,14 +219,14 @@ class GPCReport(object):
         :type cum: GPCKernel
         :param n_terms: number of additive terms considered in `cum` so far
         """
-        assert isinstance(ker, GPCKernel)
-        assert isinstance(cum, GPCKernel)
+        assert isinstance(ker, GPCKernel), 'Kernel must be of type GPCKernel'
+        assert isinstance(cum, GPCKernel), 'Kernel must be of type GPCKernel'
 
         doc = self.doc
         kerDims = ker.getActiveDims()
         cumDims = cum.getActiveDims()
 
-        img1Name = 'additiveterm{0}ker'.format(n_terms)
+        img1Name = 'additive{0}ker'.format(n_terms)
         img1Format = '.eps' if len(kerDims) != 3 else '.png'
         img1Filename = img1Name + img1Format
         ker.draw(os.path.join(self.root, img1Name), active_dims_only=True)
@@ -230,7 +240,7 @@ class GPCReport(object):
 
         else:
             # Present both current component and cumulative kernel
-            img2Name = 'additiveterm{0}cum'.format(n_terms)
+            img2Name = 'additive{0}cum'.format(n_terms)
             img2Format = '.eps' if len(cumDims) != 3 else '.png'
             img2Filename = img2Name + img2Format
             cum.draw(os.path.join(self.root, img2Name), active_dims_only=True)

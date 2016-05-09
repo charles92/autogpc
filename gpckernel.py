@@ -395,6 +395,7 @@ class GPCKernel(object):
         xlo = xmin + margin * (xmax - xmin)
         xhi = xmax - margin * (xmax - xmin)
         X = self.data.X[(x >= xlo) & (x <= xhi)]
+        X = X[X[:,dim].argsort()]
         dmu_dx, _ = self.model.predictive_gradients(X)
         dmu_dx = dmu_dx[:,dim,0].reshape((-1,1))
 
