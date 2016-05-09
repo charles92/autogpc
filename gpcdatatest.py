@@ -13,6 +13,8 @@ Y[Y.flatten() == -1] = 0
 d = GPCData(X, Y)
 print d
 print d.getDataShape()
+# print d.getClass(0)
+# print d.getClass(1)
 
 # 4D - Iris dataset
 data = pods.datasets.iris()
@@ -26,10 +28,10 @@ Ynum[virgi_ind] = 1
 Ynum = np.hstack((Ynum[versi_ind], Ynum[virgi_ind])).reshape(X.shape[0], 1)
 d = GPCData(X, Ynum, ('Sepal length', 'Sepal width', 'Petal length', 'Petal width'), 'Virginica')
 print d
-xx, yy, xt, yt = d.kFoldSplits()
-for i in range(5):
-	print 'split %d:' % (i+1)
-	print 'Train: %d points' % (xx[i].shape[0])
-	print np.hstack((xx[i], yy[i]))
-	print 'Test: %d points' % (xt[i].shape[0])
-	print np.hstack((xt[i], yt[i]))
+# xx, yy, xt, yt = d.kFoldSplits()
+# for i in range(5):
+#   print 'split %d:' % (i+1)
+#   print 'Train: %d points' % (xx[i].shape[0])
+#   print np.hstack((xx[i], yy[i]))
+#   print 'Test: %d points' % (xt[i].shape[0])
+#   print np.hstack((xt[i], yt[i]))

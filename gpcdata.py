@@ -55,6 +55,16 @@ class GPCData(object):
         return self.X.shape[1]
 
 
+    def getClass(self, y):
+        """
+        Get data points of a specific class.
+
+        :param y: class label
+        :returns: array of data points whose class is `y`
+        """
+        return self.X[self.Y[:,0] == y]
+
+
     def getDataShape(self):
         xmu = self.X.mean(axis=0).flatten().tolist()
         xsd = self.X.std(axis=0).flatten().tolist()

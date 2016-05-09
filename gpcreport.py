@@ -23,7 +23,7 @@ class GPCReport(object):
         self.kers, self.cums = cumulateAdditiveKernels(summands)
 
         self.makePreamble(paper=paper)
-        self.makeDataSummary(search_history=history)
+        self.makeDataSummary()
         self.describeVariables()
         self.describeAdditiveComponents()
 
@@ -45,33 +45,35 @@ class GPCReport(object):
         doc.append(pl.Command('url', 'https://github.com/charles92/autogpc'))
 
 
-    def makeDataSummary(self, search_history=None):
-        assert isinstance(search_history, list) and len(search_history) > 1, \
-            'search_history must be a list containing >=2 GPCKernel instances'
-        kern = search_history[1]
+    def makeDataSummary(self):
+        kern = self.history[1]
         doc = self.doc
         data = kern.data
         dataShape = data.getDataShape()
 
+        npts = data.getNum()
+        ndim = data.getDim()
+        npos = data.getClass(1).shape[0]
+        nneg = data.getClass(0).shape[0]
+
         imgName = 'data'
-        imgFormat = '.eps' if data.getDim() != 3 else '.png'
+        imgFormat = '.eps' if ndim != 3 else '.png'
         imgOutName = imgName + imgFormat
         kern.draw(os.path.join(self.root, imgName), draw_posterior=False)
 
         with doc.create(pl.Section("The Dataset")):
-            s = r"The training dataset contains {0} data points".format(data.getNum())
-            s = s + r" which span {0} dimensions. ".format(data.getDim())
-            for dim in xrange(data.getDim()):
-                s = s + r"In dimension ``{0}'', ".format(data.XLabel[dim])
-                s = s + r"the data has a minimum of {0:.2f} ".format(dataShape['x_min'][dim])
-                s = s + r"and a maximum of {0:.2f}; ".format(dataShape['x_max'][dim])
-                s = s + r"the standard deviation is {0:.2f}. ".format(dataShape['x_sd'][dim])
+            s = "The training dataset contains {0} data points ".format(npts) \
+              + "which span {0} dimensions. ".format(ndim) \
+              + r"Among them, {0} ({1:.2f}\%) have positive class labels, ".format(npos, npos / float(npts) * 100) \
+              + r"whereas other {0} ({1:.2f}\%) have negative labels. ".format(nneg, nneg / float(npts) * 100) \
+              + "All input dimensions as well as the class label assignments " \
+              + "are plotted in the figure below. "
 
             doc.append(ut.NoEscape(s))
 
             with doc.create(pl.Figure(position='h!')) as fig:
                 fig.add_image(imgOutName)
-                fig.add_caption(r"The input dataset.")
+                fig.add_caption(r"The input dataset. Positive samples are coloured red, and negative ones blue.")
 
 
     def describeOneVariable(self, ker):
