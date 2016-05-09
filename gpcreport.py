@@ -89,7 +89,7 @@ class GPCReport(object):
         ds = data.getDataShape()
 
         xmu, xsd, xmin, xmax = ds['x_mu'][dim], ds['x_sd'][dim], ds['x_min'][dim], ds['x_max'][dim]
-        error = ker.getCvError()
+        error = ker.error()
         mon = ker.monotonicity()
         per = ker.period()
 
@@ -159,8 +159,8 @@ class GPCReport(object):
         ker, cum = self.kers[term - 1], self.cums[term - 1]
         data = ker.data
         kdims = ker.getActiveDims()
-        error = cum.getCvError()
-        if term > 1: delta = self.cums[term - 2].getCvError() - error
+        error = cum.error()
+        if term > 1: delta = self.cums[term - 2].error() - error
         nlml = cum.getNLML()
 
         doc = self.doc
@@ -193,7 +193,7 @@ class GPCReport(object):
         Generate a section describing all additive components present.
         """
         n_terms = len(self.kers)
-        error = self.cums[-1].getCvError()
+        error = self.cums[-1].error()
         doc = self.doc
         with doc.create(pl.Section("Additive Component Analysis")):
             s = r"The pattern underlying the dataset can be decomposed into " \
@@ -307,7 +307,7 @@ def cumulateAdditiveKernels(summands):
     :param summands: list of GPCKernel objects to be cumulated
     """
     # Sort in descending order of cross-validated training error
-    terms = sorted(summands, key=lambda k: k.cvError, reverse=True)
+    terms = sorted(summands, key=lambda k: k.error(), reverse=True)
     ker = terms.pop()
     cum = ker
     kers = [ker]
@@ -316,7 +316,7 @@ def cumulateAdditiveKernels(summands):
     # Progressively include more additive components according to the cross-
     # validated training error of the cumulated additive kernel
     while len(terms) > 0:
-        terms = sorted(terms, key=lambda k: cum.add(k).cvError, reverse=True)
+        terms = sorted(terms, key=lambda k: cum.add(k).error(), reverse=True)
         ker = terms.pop()
         cum = cum.add(ker)
         kers.append(ker)

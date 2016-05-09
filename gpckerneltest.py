@@ -103,6 +103,9 @@ k = gpckernel.GPCKernel(ff.SumKernel([k0, k1]), data, depth=2)
 k.train()
 print 'active_dims:'
 print k.getActiveDims()
+print k.misclassifiedPoints()['X']
+print k.misclassifiedPoints()['Y']
+print k.misclassifiedPoints()['Phi']
 mis = k.misclassifiedPoints()
 nMis = mis['X'].shape[0]
 assert nMis == mis['Y'].shape[0]

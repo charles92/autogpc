@@ -49,10 +49,9 @@ class GPCKernel(object):
         self.data = data
         self.depth = depth
         self.parent = parent
-
         self.model = None
         self.isSparse = None
-        self.cvError = None
+
         if not isinstance(self.kernel, ff.NoneKernel):
             self.kernel.initialise_params(data_shape=self.data.getDataShape())
 
@@ -62,7 +61,7 @@ class GPCKernel(object):
         if isinstance(kernel_str, Exception):
             kernel_str = "NoneKernel"
         return 'GPCKernel: depth = %d, NLML = %f, CV error = %.4f\n' % \
-               (self.depth, self.getNLML(), self.getCvError()) + '  ' + \
+               (self.depth, self.getNLML(), self.error()) + '  ' + \
                kernel_str
 
 
@@ -101,7 +100,6 @@ class GPCKernel(object):
             ret.model = GPy.core.SVGP(X, Y, Z, ker, lik)
         else:
             ret.model = GPy.models.GPClassification(X, Y, kernel=ker)
-        ret.cvError = ret.misclassifiedPoints()['X'].shape[0] / float(X.shape[0])
 
         return ret
 
@@ -133,7 +131,7 @@ class GPCKernel(object):
         if not isinstance(self.kernel, ff.NoneKernel):
             self.kernel.initialise_params(data_shape=self.data.getDataShape())
         self.isSparse = None
-        self.cvError = None
+        self.errorRate = None
 
 
     def train(self, mode='auto', n_folds=5):
@@ -179,7 +177,7 @@ class GPCKernel(object):
             sorted(results, key=lambda x: x['error'])
             self.model = results[med]['model']
             self.kernel = gpy2gpss(self.model.kern)
-            self.cvError = np.mean([x['error'] for x in results])
+            self.errorRate = np.mean([x['error'] for x in results])
         else:
             print "Warning: none of the %d optimisation attempts were successful." % n_folds
 
@@ -213,7 +211,7 @@ class GPCKernel(object):
 
         m = GPy.models.GPClassification(X, Y, kernel=gpss2gpy(k))
         m.optimize()
-        cverror = self.misclassifiedPoints(model=m, X=XT, Y=YT)['X'].shape[0] / float(XT.shape[0])
+        cverror = computeError(m, XT, YT)
 
         return {
             'model': m,
@@ -255,7 +253,7 @@ class GPCKernel(object):
         lik = GPy.likelihoods.Bernoulli()
         m = GPy.core.SVGP(X, Y, Z, ker, lik)
         m.optimize()
-        cverror = self.misclassifiedPoints(model=m, X=XT, Y=YT)['X'].shape[0] / float(XT.shape[0])
+        cverror = computeError(m, XT, YT)
 
         return {
             'model': m,
@@ -291,8 +289,6 @@ class GPCKernel(object):
             else:
                 s.model = GPy.models.GPClassification(X, Y, kernel=ker)
 
-            s.cvError = s.misclassifiedPoints()['X'].shape[0] / float(X.shape[0])
-
         return summands
 
 
@@ -316,23 +312,17 @@ class GPCKernel(object):
         plot.save(filename)
 
 
-    def misclassifiedPoints(self, model=None, X=None, Y=None):
+    def misclassifiedPoints(self, X=None, Y=None):
         """
         Find testing data points which are misclassified by the current model.
 
-        :param model: GPy model to be evaluated, defaults to the current model
         :param X: testing data points, defaults to the entire current dataset
         :param Y: testing targets, defaults to the entire current dataset
         :returns: list of misclassified training points
         """
-        if model is None: model = self.model
+        model = self.model
         if X is None or Y is None: X, Y = self.data.X, self.data.Y
-        assert model is not None, "Model does not exist."
-
-        Phi, _ = model.predict(X)                    # Predicted Y, range [0, 1]
-        OK = (((Phi - 0.5) * (Y - 0.5)) < 0).flatten()    # < 0 if misclassified
-        ret = {'X': X[OK], 'Y': Y[OK], 'Phi': Phi[OK]}
-        return ret
+        return misclassifiedPoints(model, X, Y)
 
 
     def getDepth(self):
@@ -347,13 +337,6 @@ class GPCKernel(object):
         :returns: negative log marginal likelihood
         """
         return float("inf") if self.model is None else -self.model.log_likelihood()
-
-
-    def getCvError(self):
-        """
-        :returns: cross-validated training error rate
-        """
-        return 1.0 if self.cvError is None else self.cvError
 
 
     def getActiveDims(self):
@@ -373,6 +356,18 @@ class GPCKernel(object):
         :returns: an object of type GPy.kern.Kern
         """
         return gpss2gpy(self.kernel)
+
+
+    def error(self):
+        """
+        Cached training error rate. This is usually the average k-fold
+        cross-validated error rate. If no error rate is cached, this method will
+        compute error rate over the entire training set (i.e. without
+        cross-validation).
+        """
+        if not hasattr(self, 'errorRate') or self.errorRate is None:
+            self.errorRate = computeError(self.model, self.data.X, self.data.Y)
+        return self.errorRate
 
 
     def monotonicity(self, margin=0.1):
@@ -589,4 +584,33 @@ def isKernelEqual(k1, k2, compare_params=False, use_canonical=True):
     else:
         raise NotImplementedError("Cannot compare kernels of type " \
             + type(k1).__name__ + " and " + type(k2).__name__)
+
+
+def misclassifiedPoints(model, XT, YT):
+    """
+    Samples misclassified by given GP classifier.
+
+    :param model: GPy model
+    :param XT: testing data points
+    :param YT: testing set targets
+    :returns: array of misclassified points
+    """
+    if model is None:
+        return {'X': XT, 'Y': YT}
+
+    Phi, _ = model.predict(XT)                     # Predicted Y, range [0, 1]
+    OK = (((Phi - 0.5) * (YT - 0.5)) < 0).flatten()     # < 0 if misclassified
+    return {'X': XT[OK], 'Y': YT[OK]}
+
+
+def computeError(model, XT, YT):
+    """
+    Compute training error of given GP classifier.
+
+    :param model: GPy model
+    :param XT: testing data points
+    :param YT: testing set targets
+    :returns: error rate in range [0, 1]
+    """
+    return misclassifiedPoints(model, XT, YT)['X'].shape[0] / float(XT.shape[0])
 

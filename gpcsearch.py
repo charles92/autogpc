@@ -46,8 +46,8 @@ class GPCSearch(object):
             print "\n=====\nFully expanded kernel set at depth {0}:".format(depth+1)
             print '\n'.join(k.__repr__() for k in kernels)
 
-            kernels = sorted(kernels, key=lambda x: x.getCvError())
-            if len(kernels) == 0 or kernels[0].getCvError() >= best[-1].getCvError():
+            kernels = sorted(kernels, key=lambda x: x.error())
+            if len(kernels) == 0 or kernels[0].error() >= best[-1].error():
                 break
 
             best.append(kernels[0])
@@ -99,10 +99,10 @@ def bestKernels1D(kernels):
     # Run through all candidates
     for k in kernels:
         dim = k.getActiveDims()[0]
-        if k.getCvError() < best1d[dim].getCvError():
+        if k.error() < best1d[dim].error():
             best1d[dim] = k
 
     # Rank by cross-validated training error
-    best1d.sort(key=lambda k: k.getCvError())
+    best1d.sort(key=lambda k: k.error())
 
     return best1d
