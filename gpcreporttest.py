@@ -20,9 +20,9 @@ d = GPCData(X, Y)
 print "\n=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
 
 search = GPCSearch(data=d, max_depth=3, beam_width=2)
-results = search.search()
+best, best1d = search.search()
 
-report = GPCReport(history=results)
+report = GPCReport(history=best, best1d=best1d)
 report.export()
 
 # data = pods.datasets.iris()

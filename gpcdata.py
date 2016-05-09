@@ -54,11 +54,13 @@ class GPCData(object):
         return self.X.shape[1]
 
     def getDataShape(self):
-        xsd = np.std(self.X, axis=0).flatten().tolist()
-        xmin = np.amin(self.X, axis=0).flatten().tolist()
-        xmax = np.amax(self.X, axis=0).flatten().tolist()
-        ysd = np.std(self.Y)
+        xmu = self.X.mean(axis=0).flatten().tolist()
+        xsd = self.X.std(axis=0).flatten().tolist()
+        xmin = self.X.min(axis=0).flatten().tolist()
+        xmax = self.X.max(axis=0).flatten().tolist()
+        ysd = self.Y.std()
         return {
+            'x_mu':  xmu,
             'x_sd':  xsd,
             'x_min': xmin,
             'x_max': xmax,

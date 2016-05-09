@@ -68,9 +68,10 @@ class GPCSearch(object):
         for k in summands:
             print k
         print "\n=====\nBest 1-D kernels:"
-        for k in bestKernels1D(kernels1d):
+        best1d = bestKernels1D(kernels1d)
+        for k in best1d:
             print k
-        return best
+        return best, best1d
 
 
 ##############################################

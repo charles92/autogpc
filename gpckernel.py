@@ -375,6 +375,50 @@ class GPCKernel(object):
         return gpss2gpy(self.kernel)
 
 
+    def monotonicity(self, margin=0.1):
+        """
+        Test if a 1-D kernel has monotonic posterior mean.
+
+        :param margin: fraction of the input range to be discarded on each extreme.
+        We only run tests on the middle part of the input range, as boundary values
+        can have non-monotonic latent function mean values
+        :returns: 1 if increasing, -1 if decreasing, 0 if non-monotonic
+        """
+        assert len(self.getActiveDims()) == 1, 'Kernel must be one-dimensional'
+
+        if margin < 0: margin = 0
+        if margin > 0.5: margin = 0.5
+
+        dim = self.getActiveDims()[0]
+        x = self.data.X[:,dim]
+        xmin, xmax = x.min(), x.max()
+        xlo = xmin + margin * (xmax - xmin)
+        xhi = xmax - margin * (xmax - xmin)
+        X = self.data.X[(x >= xlo) & (x <= xhi)]
+        dmu_dx, _ = self.model.predictive_gradients(X)
+        dmu_dx = dmu_dx[:,dim,0].reshape((-1,1))
+
+        if np.all(dmu_dx > 0):
+            return 1
+        elif np.all(dmu_dx < 0):
+            return -1
+        else:
+            return 0
+
+
+    def period(self):
+        """
+        Period of a 1-D periodic kernel.
+
+        :returns: period of a periodic kernel, or 0 if not periodic
+        """
+        assert len(self.getActiveDims()) == 1, 'Kernel must be one-dimensional'
+        if isinstance(self.kernel, ff.PeriodicKernel):
+            return self.kernel.period
+        else:
+            return 0.0
+
+
 ##############################################
 #                                            #
 #             Helper Functions               #

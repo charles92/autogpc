@@ -13,15 +13,18 @@ class GPCReport(object):
     AutoGPC data analysis report.
     """
 
-    def __init__(self, root='./latex', paper='a4paper', history=None):
+    def __init__(self, root='./latex', paper='a4paper', history=None, best1d=None):
         self.root = root
         self.doc = pl.Document()
         self.history = history
+        self.best1d = best1d
 
         summands = self.history[-1].toSummands()
         self.kers, self.cums = cumulateAdditiveKernels(summands)
 
         self.makePreamble(paper=paper)
+        self.makeDataSummary(search_history=history)
+        self.describeVariables()
         self.describeAdditiveComponents()
 
 
@@ -69,6 +72,71 @@ class GPCReport(object):
             with doc.create(pl.Figure(position='h!')) as fig:
                 fig.add_image(imgOutName)
                 fig.add_caption(r"The input dataset.")
+
+
+    def describeOneVariable(self, ker):
+        """
+        Generate a subsection describing a particular variable.
+
+        :param ker:
+        :type ker:
+        """
+        assert isinstance(ker, GPCKernel), 'Argument must be of type GPCKernel'
+        assert len(ker.getActiveDims()) == 1, 'The kernel must be one-dimensional'
+
+        dim = ker.getActiveDims()[0]
+        data = ker.data
+        ds = data.getDataShape()
+
+        xmu, xsd, xmin, xmax = ds['x_mu'][dim], ds['x_sd'][dim], ds['x_min'][dim], ds['x_max'][dim]
+        error = ker.getCvError()
+        mon = ker.monotonicity()
+        per = ker.period()
+
+        doc = self.doc
+        with doc.create(pl.Subsection(ut.NoEscape(dims2text([dim], data, cap=True)))):
+            s = dims2text([dim], data, cap=True) + " has " \
+              + "mean value {0:.2f} and standard deviation {1:.2f}. ".format(xmu, xsd) \
+              + "Its observed minimum and maximum are {0:.2f} and {1:.2f} respectively. ".format(xmin, xmax) \
+              + "A GP classifier trained on this variable alone can achieve " \
+              + r"a cross-validated training error of {0:.2f}\%. ".format(error * 100)
+            if mon != 0:
+                corr_str = "positive" if mon > 0 else "negative"
+                s = s + "There is a " + corr_str + " correlation between the value " \
+                      + "of this variable and the likelihood of the sample being " \
+                      + "classified as positive. "
+            elif per != 0:
+                s = s + "The class assignment is approximately periodic with " \
+                      + dims2text([dim], data) + ". " \
+                      + "The period is about {0:.2f}. ".format(per)
+            else:
+                s = s + "No monotonicity or periodicity is associated with this variable. "
+            doc.append(ut.NoEscape(s))
+
+
+    def describeVariables(self):
+        """
+        Generate a section describing all input dimensions / variables.
+        """
+        n_terms = len(self.best1d)
+        doc = self.doc
+        with doc.create(pl.Section("Individual Variable Analysis")):
+            s = "First, we try to classify the training samples using only one " \
+              + "of the {0:d} input dimensions. ".format(n_terms) \
+              + "By considering the best classification performance that is " \
+              + "achievable in each dimension, we are able to infer which " \
+              + "dimensions are the most relevant to the class assignment. "
+            doc.append(ut.NoEscape(s))
+            doc.append("\n\n")
+
+            s = "Listed below are all input variables involved, in descending " \
+              + "order of inferred relevance (i.e. ascending order of " \
+              + "cross-validated training error of the best one-dimensional " \
+              + "GP classifier): "
+            doc.append(ut.NoEscape(s))
+
+            for i in range(n_terms):
+                self.describeOneVariable(self.best1d[i])
 
 
     def describeOneAdditiveComponent(self, term):
@@ -197,22 +265,25 @@ class GPCReport(object):
 #                                            #
 ##############################################
 
-def dims2text(dims, data):
+def dims2text(dims, data, cap=False):
     """
     Convert a list of dimensions to their names.
 
     :param dims: list of dimensions (i.e. integers)
     :param data: `GPCData` object
+    :param cap: captitalise first letter if True (default to False)
+    :type cap: boolean
     """
     assert len(dims) > 0, 'The list of dimensions must contain at least one member.'
 
     xl = data.XLabel
+    text = "Variable" if cap else "variable"
     if len(dims) == 1:
-        return r"variable ``{0}''".format(xl[dims[0]])
+        text = text + " ``{0}''".format(xl[dims[0]])
     else:
-        text = "variables "
+        text = text + "s "
         for i in range(len(dims) - 2):
-            text = text + r"``{0}'', ".format(xl[dims[i]])
+            text = text + "``{0}'', ".format(xl[dims[i]])
         text = text + r"``{0}'' and ``{1}''".format(xl[dims[-2]],xl[dims[-1]])
 
     return text
@@ -242,39 +313,3 @@ def cumulateAdditiveKernels(summands):
         cums.append(cum)
 
     return kers, cums
-
-
-def testMonotonicity(kernel, margin=0.1):
-    """
-    Test if a 1-D GP kernel has monotonic posterior mean.
-
-    :param kernel: 1-D kernel object to be tested
-    :type kernel: GPCKernel
-    :param margin: fraction of the input range to be discarded on each extreme.
-    We only run tests on the middle part of the input range, as boundary values
-    can have non-monotonic latent function mean values
-    :returns: 1 if increasing, -1 if decreasing, 0 if non-monotonic
-    """
-    assert isinstance(kernel, GPCKernel), 'kernel must be of type GPCKernel'
-    assert len(kernel.getActiveDims()) == 1, 'kernel must be one-dimensional'
-
-    if margin < 0: margin = 0
-    if margin > 0.5: margin = 0.5
-
-    dim = kernel.getActiveDims()[0]
-    x = kernel.data.X[:,dim]
-    xmin, xmax = x.min(), x.max()
-    xlo = xmin + margin * (xmax - xmin)
-    xhi = xmax - margin * (xmax - xmin)
-    x = x[(x >= xlo) & (x <= xhi)].reshape((-1, 1))
-    x.sort(axis=0)
-    dmu_dx, _ = kernel.model.predictive_gradients(x)
-    dmu_dx = dmu_dx.reshape((-1, 1))
-
-    if np.all(dmu_dx > 0):
-        return 1
-    elif np.all(dmu_dx < 0):
-        return -1
-    else:
-        return 0
-
