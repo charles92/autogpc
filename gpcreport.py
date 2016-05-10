@@ -28,6 +28,9 @@ class GPCReport(object):
             print e
         self.path = p
 
+        # Figure numbering
+        self.fignum = 1
+
         # Make document
         self.doc = pl.Document()
         self.makePreamble(paper=paper)
@@ -89,12 +92,16 @@ class GPCReport(object):
               + r"Among them, {0} ({1:.2f}\%) have positive class labels, ".format(npos, npos / float(npts) * 100) \
               + r"whereas other {0} ({1:.2f}\%) have negative labels. ".format(nneg, nneg / float(npts) * 100) \
               + "All input dimensions as well as the class label assignments " \
-              + "are plotted in the figure below. "
+              + "are plotted in Figure {0}. ".format(self.fignum)
             doc.append(ut.NoEscape(s))
 
             with doc.create(pl.Figure(position='h!')) as fig:
                 fig.add_image(imgOutName)
-                fig.add_caption(r"The input dataset. Positive samples are coloured red, and negative ones blue.")
+                s = "The input dataset. " \
+                  + r"Positive samples (``{0}'') are coloured red, ".format(data.YLabel[1]) \
+                  + r"and negative ones (``{0}'') blue. ".format(data.YLabel[0])
+                fig.add_caption(ut.NoEscape(s))
+                self.fignum += 1
 
 
     def describeOneVariable(self, ker):
@@ -134,6 +141,7 @@ class GPCReport(object):
                       + "The period is about {0:.2f}. ".format(per)
             else:
                 s = s + "No monotonicity or periodicity is associated with this variable. "
+            s = s + "The GP posterior trained on this variable is plotted in Figure {0}. ".format(self.fignum)
             doc.append(ut.NoEscape(s))
 
             # Plotting
@@ -145,6 +153,7 @@ class GPCReport(object):
             with doc.create(pl.Figure(position='h!')) as fig:
                 fig.add_image(imgFilename, width=ut.NoEscape(r'0.5\textwidth'))
                 fig.add_caption(ut.NoEscape(caption_str))
+                self.fignum += 1
 
 
     def describeVariables(self):
@@ -195,7 +204,7 @@ class GPCReport(object):
                 doc.append(ut.NoEscape(s))
 
                 s = r"This component operates on " + dims2text(kdims, data) + ", " \
-                  + r"as shown in the figure below. "
+                  + r"as shown in Figure {0}. ".format(self.fignum)
                 doc.append(ut.NoEscape(s))
 
             else:
@@ -205,7 +214,7 @@ class GPCReport(object):
                 doc.append(ut.NoEscape(s))
 
                 s = r"The additional component operates on " + dims2text(kdims, data) + ", " \
-                  + r"as shown in the figure below. "
+                  + r"as shown in Figure {0}. ".format(self.fignum)
                 doc.append(ut.NoEscape(s))
 
             self.makeInteractionFigure(ker, cum, term)
@@ -284,6 +293,7 @@ class GPCReport(object):
                     subfig2.add_image(img2Filename, width=ut.NoEscape(r'\textwidth'))
                     subfig2.add_caption(ut.NoEscape(caption2_str))
                 fig.add_caption(ut.NoEscape(caption_str))
+                self.fignum += 1
 
 
     def export(self, filename=None):
