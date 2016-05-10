@@ -370,7 +370,7 @@ class GPCKernel(object):
         return self.errorRate
 
 
-    def monotonicity(self, margin=0.1):
+    def monotonicity(self, margin=0.15):
         """
         Test if a 1-D kernel has monotonic posterior mean.
 
