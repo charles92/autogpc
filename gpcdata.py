@@ -16,7 +16,7 @@ class GPCData(object):
         :param X: NxD matrix of real-valued inputs
         :param Y: Nx1 matrix of {0,1}-valued class labels
         :param XLabel: D-tuple or D-list of axis labels
-        :param YLable: y axis label string
+        :param YLabel: y axis label string
         """
         # Sanity check
         assert isinstance(X, np.ndarray), "X must be a Numpy ndarray"
@@ -32,10 +32,10 @@ class GPCData(object):
             self.XLabel = tuple(XLabel)
         else:
             self.XLabel = tuple('$x_{{{0}}}$'.format(d + 1) for d in range(X.shape[1]))
-        if YLabel is not None and isinstance(YLabel, basestring):
+        if YLabel is not None and isinstance(YLabel, (list,tuple)) and len(YLabel) == 2:
             self.YLabel = YLabel
         else:
-            self.YLabel = '$y$'
+            self.YLabel = ['negative', 'positive']
 
 
     def __repr__(self):

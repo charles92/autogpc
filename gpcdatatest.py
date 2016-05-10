@@ -26,7 +26,7 @@ X = np.hstack((X[versi_ind,:], X[virgi_ind,:])).squeeze()
 Ynum = np.zeros(Y.size)
 Ynum[virgi_ind] = 1
 Ynum = np.hstack((Ynum[versi_ind], Ynum[virgi_ind])).reshape(X.shape[0], 1)
-d = GPCData(X, Ynum, XLabel=('Sepal length', 'Sepal width', 'Petal length', 'Petal width'), YLabel='Virginica')
+d = GPCData(X, Ynum, XLabel=('Sepal length', 'Sepal width', 'Petal length', 'Petal width'), YLabel=['Versicolor', 'Virginica'])
 print d
 # xx, yy, xt, yt = d.kFoldSplits()
 # for i in range(5):

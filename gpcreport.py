@@ -71,13 +71,25 @@ class GPCReport(object):
         kern.draw(os.path.join(self.path, imgName), draw_posterior=False)
 
         with doc.create(pl.Section("The Dataset")):
-            s = "The training dataset contains {0} data points ".format(npts) \
-              + "which span {0} dimensions. ".format(ndim) \
+            s = "The training dataset spans {0} input dimensions, which are: ".format(ndim)
+            doc.append(ut.NoEscape(s))
+            with doc.create(pl.Enumerate()) as enum:
+                for i in range(ndim):
+                    enum.add_item(dims2text([i], data, cap=True))
+
+            s = r"There is one binary output variable $y$: "
+            doc.append(ut.NoEscape(s))
+            with doc.create(pl.Itemize()) as itemize:
+                s = r"$y=0$ (negative) represents ``{0}''".format(data.YLabel[0])
+                itemize.add_item(ut.NoEscape(s))
+                s = r"$y=1$ (positive) represents ``{0}''".format(data.YLabel[1])
+                itemize.add_item(ut.NoEscape(s))
+
+            s = "The training dataset contains {0} data points. ".format(npts) \
               + r"Among them, {0} ({1:.2f}\%) have positive class labels, ".format(npos, npos / float(npts) * 100) \
               + r"whereas other {0} ({1:.2f}\%) have negative labels. ".format(nneg, nneg / float(npts) * 100) \
               + "All input dimensions as well as the class label assignments " \
               + "are plotted in the figure below. "
-
             doc.append(ut.NoEscape(s))
 
             with doc.create(pl.Figure(position='h!')) as fig:
