@@ -4,7 +4,7 @@
 import numpy as np
 import pylatex as pl
 import pylatex.utils as ut
-import os
+import os, shutil
 from gpckernel import GPCKernel
 from gpcdata import GPCData
 
@@ -13,15 +13,23 @@ class GPCReport(object):
     AutoGPC data analysis report.
     """
 
-    def __init__(self, root='./latex', paper='a4paper', history=None, best1d=None):
-        self.root = root
-        self.doc = pl.Document()
+    def __init__(self, root='./latex', name='default', paper='a4paper', history=None, best1d=None):
+        self.name = name
         self.history = history
         self.best1d = best1d
+        self.kers, self.cums = cumulateAdditiveKernels(history[-1].toSummands())
 
-        summands = self.history[-1].toSummands()
-        self.kers, self.cums = cumulateAdditiveKernels(summands)
+        # Prepare directory
+        p = os.path.join(root, name)
+        try:
+            if os.path.exists(p): shutil.rmtree(p)
+            os.makedirs(p)
+        except Exception as e:
+            print e
+        self.path = p
 
+        # Make document
+        self.doc = pl.Document()
         self.makePreamble(paper=paper)
         self.makeDataSummary()
         self.describeVariables()
@@ -36,7 +44,8 @@ class GPCReport(object):
         doc.packages.append(pl.Package('babel', options=['UKenglish']))
         doc.packages.append(pl.Package('isodate', options=['UKenglish']))
 
-        doc.preamble.append(pl.Command('title', 'AutoGPC Data Analysis Report'))
+        title_str = r'AutoGPC Data Analysis Report on ' + self.name + ' Dataset'
+        doc.preamble.append(pl.Command('title', ut.NoEscape(title_str)))
         doc.preamble.append(pl.Command('author', 'Automatic Statistician'))
         doc.preamble.append(pl.Command('date', ut.NoEscape(r'\today')))
         doc.append(ut.NoEscape(r'\maketitle'))
@@ -59,7 +68,7 @@ class GPCReport(object):
         imgName = 'data'
         imgFormat = '.eps' if ndim != 3 else '.png'
         imgOutName = imgName + imgFormat
-        kern.draw(os.path.join(self.root, imgName), draw_posterior=False)
+        kern.draw(os.path.join(self.path, imgName), draw_posterior=False)
 
         with doc.create(pl.Section("The Dataset")):
             s = "The training dataset contains {0} data points ".format(npts) \
@@ -119,7 +128,7 @@ class GPCReport(object):
             imgName = 'var{0}'.format(dim)
             imgFormat = '.eps'
             imgFilename = imgName + imgFormat
-            ker.draw(os.path.join(self.root, imgName), active_dims_only=True)
+            ker.draw(os.path.join(self.path, imgName), active_dims_only=True)
             caption_str = r"Trained classifier on " + dims2text([dim], ker.data) + "."
             with doc.create(pl.Figure(position='h!')) as fig:
                 fig.add_image(imgFilename, width=ut.NoEscape(r'0.5\textwidth'))
@@ -231,7 +240,7 @@ class GPCReport(object):
         img1Name = 'additive{0}ker'.format(n_terms)
         img1Format = '.eps' if len(kerDims) != 3 else '.png'
         img1Filename = img1Name + img1Format
-        ker.draw(os.path.join(self.root, img1Name), active_dims_only=True)
+        ker.draw(os.path.join(self.path, img1Name), active_dims_only=True)
 
         if n_terms == 1 or len(cumDims) > 3:
             # Only present current additive component
@@ -245,7 +254,7 @@ class GPCReport(object):
             img2Name = 'additive{0}cum'.format(n_terms)
             img2Format = '.eps' if len(cumDims) != 3 else '.png'
             img2Filename = img2Name + img2Format
-            cum.draw(os.path.join(self.root, img2Name), active_dims_only=True)
+            cum.draw(os.path.join(self.path, img2Name), active_dims_only=True)
             caption1_str = r"Current additive component involving " + dims2text(kerDims, ker.data) + "."
             caption2_str = r"Previous and current components combined, involving " + dims2text(cumDims, cum.data) + "."
             caption_str = r"Trained classifier on " + dims2text(cumDims, cum.data) + "."
@@ -268,7 +277,7 @@ class GPCReport(object):
     def export(self, filename=None):
         if filename is None:
             filename = 'report'
-        self.doc.generate_pdf(os.path.join(self.root, filename))
+        self.doc.generate_pdf(os.path.join(self.path, filename))
 
 
 ##############################################
