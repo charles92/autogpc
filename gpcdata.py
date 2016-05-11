@@ -44,7 +44,11 @@ class GPCData(object):
                'XLabel:\n' + \
                ', '.join(self.XLabel) + '\n' + \
                'YLabel:\n' + \
-               ', '.join(self.YLabel) + '\n'
+               ', '.join(self.YLabel) + '\n' + \
+               'X Ranges:\n' + \
+               str(self.inputRange().flatten().tolist()) + '\n' + \
+               'X Minimum Separations:\n' + \
+               str(self.minSeparation().flatten().tolist())
 
 
     def getNum(self):
@@ -80,6 +84,61 @@ class GPCData(object):
         }
 
 
+    def inputRange(self, dims=None):
+        """
+        Compute and cache range of values in each dimension (max - min).
+        Use cached value when called after the first time.
+
+        :param dims: the input dimension(s) of interest
+        :returns: range of values in dimension `dims`
+        """
+        if dims is None:
+            dims = range(self.getDim())
+        if not hasattr(self, 'xranges') or self.xranges is None:
+            self.xranges = self.computeInputRange()
+        return self.xranges[0,dims]
+
+
+    def computeInputRange(self):
+        """
+        Compute range of values in each input dimension.
+
+        :returns: 1xD array of value range in each dimension
+        """
+        X = self.X
+        return X.max(axis=0, keepdims=True) - X.min(axis=0, keepdims=True)
+
+
+    def minSeparation(self, dims=None):
+        """
+        Compute and cache minimum separation between distinct values in each
+        dimension. Use cached value when called after the first time.
+
+        :param dims: the input dimension(s) of interest
+        :returns: minimum separation between distinct values in dimension `dim`
+        """
+        if dims is None:
+            dims = range(self.getDim())
+        if not hasattr(self, 'minseps') or self.minseps is None:
+            self.minseps = self.computeMinSeparation()
+        return self.minseps[0,dims]
+
+
+    def computeMinSeparation(self):
+        """
+        Compute the minimum separation between distinct values in each dimension.
+        Useful in constraining the length scale of SE kernels.
+
+        :returns: 1xD array of minimum separation in each dimension
+        """
+        X = self.X
+        ndim = self.getDim()
+        minseps = np.ndarray((1,ndim))
+        for i in range(ndim):
+            minseps[0,i] = np.diff(np.unique(X[:,i])).min()
+        return minseps
+
+
     def kFoldSplits(self, k=5):
         """
         Split dataset into training sets and validation sets for k-fold
@@ -112,4 +171,3 @@ class GPCData(object):
             self.splits = ret
             self.nFolds = k
             return ret
-

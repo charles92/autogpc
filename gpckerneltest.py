@@ -33,14 +33,14 @@ getGPyKernelTest(k1, data)
 k2 = ff.SqExpKernel(dimension=1, lengthscale=1, sf=1.5)
 getGPyKernelTest(k2, data)
 
-# # Periodic
-# k2 = ff.PeriodicKernel(dimension=2, lengthscale=5, period=4, sf=1.5)
-# getGPyKernelTest(k2)
+# Periodic
+kp = ff.PeriodicKernel(dimension=0, lengthscale=5, period=4, sf=1.5)
+getGPyKernelTest(k2, data)
 
 # Sum
 k3 = ff.SumKernel([k1, k2])
 getGPyKernelTest(k3, data)
-k4 = ff.SumKernel([k1, k3])
+k4 = ff.SumKernel([k1, kp])
 getGPyKernelTest(k4, data)
 
 # Product
@@ -105,13 +105,11 @@ print 'active_dims:'
 print k.getActiveDims()
 print k.misclassifiedPoints()['X']
 print k.misclassifiedPoints()['Y']
-print k.misclassifiedPoints()['Phi']
 mis = k.misclassifiedPoints()
 nMis = mis['X'].shape[0]
 assert nMis == mis['Y'].shape[0]
-assert nMis == mis['Phi'].shape[0]
 print 'X\tY\tMisclassified as'
 for i in range(nMis):
-	print np.array_str(mis['X'][i,:]) + '\t' + np.array_str(mis['Y'][i]) + '\t' + np.array_str(mis['Phi'][i])
+    print np.array_str(mis['X'][i,:]) + '\t' + np.array_str(mis['Y'][i])
 
 print "Passed!"

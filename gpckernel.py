@@ -89,7 +89,7 @@ class GPCKernel(object):
         ret = GPCKernel(k, self.data)
 
         X, Y = self.data.X, self.data.Y
-        ker = gpss2gpy(k)
+        ker = gpss2gpy(k, data=self.data)
         ret.isSparse = self.isSparse
         if ret.isSparse:
             # TODO: inherit number of inducing points from parent
@@ -209,7 +209,7 @@ class GPCKernel(object):
             k = removeKernelParams(k)
             k.initialise_params(data_shape=self.data.getDataShape())
 
-        m = GPy.models.GPClassification(X, Y, kernel=gpss2gpy(k))
+        m = GPy.models.GPClassification(X, Y, kernel=gpss2gpy(k, data=self.data))
         m.optimize()
         cverror = computeError(m, XT, YT)
 
@@ -249,7 +249,7 @@ class GPCKernel(object):
 
         i = np.random.permutation(X.shape[0])[:inducing]
         Z = X[i].copy()
-        ker = gpss2gpy(k)
+        ker = gpss2gpy(k, data=self.data)
         lik = GPy.likelihoods.Bernoulli()
         m = GPy.core.SVGP(X, Y, Z, ker, lik)
         m.optimize()
@@ -278,7 +278,7 @@ class GPCKernel(object):
         for s in summands:
             s.isSparse = self.isSparse
 
-            ker = gpss2gpy(s.kernel)
+            ker = gpss2gpy(s.kernel, data=self.data)
             if s.isSparse:
                 # TODO: inherit number of inducing points from parent
                 inducing = 10
@@ -355,7 +355,7 @@ class GPCKernel(object):
         Convert this GPCKernel to GPy kernel.
         :returns: an object of type GPy.kern.Kern
         """
-        return gpss2gpy(self.kernel)
+        return gpss2gpy(self.kernel, data=self.data)
 
 
     def error(self):
@@ -421,9 +421,10 @@ class GPCKernel(object):
 #                                            #
 ##############################################
 
-def gpss2gpy(kernel):
+def gpss2gpy(kernel, data=None):
     """
-    Convert a GPSS kernel to a GPy kernel recursively.
+    Convert a GPSS kernel to a GPy kernel recursively, applying constraints to
+    parameters when appropriate.
 
     Support only:
     1) 1-D squared exponential kernels
@@ -431,31 +432,47 @@ def gpss2gpy(kernel):
     3) sum kernels
     4) product kernels
 
-    :param kernel: a GPSS kernel as defined in flexible_function.py
-    :returns: an object of type GPy.kern.Kern
+    :param kernel: GPSS kernel as defined in `flexible_function.py`
+    :param data: `GPCData` object. If None (default), do not apply constraints
+    :returns: object of type GPy.kern.Kern
     """
     assert isinstance(kernel, ff.Kernel), "kernel must be of type flexible_function.Kernel"
 
+    # Hard-coded constraint on sf
+    sf2min, sf2max = 0.1 ** 2, 20 ** 2
+
     if isinstance(kernel, ff.SqExpKernel):
-        ndim = 1
         sf2 = kernel.sf ** 2
         ls = kernel.lengthscale
-        dims = np.array([kernel.dimension])
-        return GPy.kern.RBF(ndim, variance=sf2, lengthscale=ls, active_dims=dims)
+        dim = kernel.dimension
+        gpyker = GPy.kern.RBF(1, variance=sf2, lengthscale=ls, active_dims=np.array([dim]))
+
+        gpyker['variance'].constrain_bounded(sf2min, sf2max, warning=False)
+        if data:
+            gpyker['lengthscale'].constrain_bounded(data.minSeparation(dims=dim),
+                data.inputRange(dims=dim) * 2, warning=False)
+        return gpyker
 
     elif isinstance(kernel, ff.PeriodicKernel):
-        ndim = 1
         sf2 = kernel.sf ** 2
-        wl = kernel.period
+        per = kernel.period
         ls = kernel.lengthscale
-        dims = np.array([kernel.dimension])
-        return GPy.kern.StdPeriodic(ndim, variance=sf2, wavelength=wl, lengthscale=ls, active_dims=dims)
+        dim = kernel.dimension
+        gpyker = GPy.kern.StdPeriodic(1, variance=sf2, period=per, lengthscale=ls, active_dims=np.array([dim]))
+
+        gpyker['variance'].constrain_bounded(sf2min, sf2max, warning=False)
+        if data:
+            gpyker['lengthscale'].constrain_bounded(data.minSeparation(dims=dim),
+                data.inputRange(dims=dim) * 2, warning=False)
+            gpyker['period'].constrain_bounded(data.minSeparation(dims=dim) * 2,
+                data.inputRange(dims=dim), warning=False)
+        return gpyker
 
     elif isinstance(kernel, ff.SumKernel):
-        return GPy.kern.Add(map(gpss2gpy, kernel.operands))
+        return GPy.kern.Add([gpss2gpy(o, data=data) for o in kernel.operands])
 
     elif isinstance(kernel, ff.ProductKernel):
-        return GPy.kern.Prod(map(gpss2gpy, kernel.operands))
+        return GPy.kern.Prod([gpss2gpy(o, data=data) for o in kernel.operands])
 
     else:
         raise NotImplementedError("Cannot translate kernel of type " + type(kernel).__name__)
@@ -484,8 +501,8 @@ def gpy2gpss(kernel):
 
     elif isinstance(kernel, GPy.kern.StdPeriodic):
         sf = np.sqrt(kernel.variance)[0]
-        ls = kernel.lengthscales[0]
-        per = kernel.wavelengths[0]
+        ls = kernel.lengthscale[0]
+        per = kernel.period[0]
         dim = kernel.active_dims[0]
         return ff.PeriodicKernel(dimension=dim, lengthscale=ls, period=per, sf=sf)
 

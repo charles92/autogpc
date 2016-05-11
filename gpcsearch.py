@@ -58,11 +58,6 @@ class GPCSearch(object):
         print "\n=====\nSearch completed. Best kernels at each depth:"
         for k in best:
             print k
-        print "\n=====\nBack-tracking:"
-        k = best[-1]
-        while k.depth > 0:
-            print k
-            k = k.parent
         print "\n=====\nSummands:"
         summands = best[-1].toSummands()
         for k in summands:
