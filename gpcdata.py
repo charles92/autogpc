@@ -44,7 +44,7 @@ class GPCData(object):
                'XLabel:\n' + \
                ', '.join(self.XLabel) + '\n' + \
                'YLabel:\n' + \
-               self.YLabel
+               ', '.join(self.YLabel) + '\n'
 
 
     def getNum(self):

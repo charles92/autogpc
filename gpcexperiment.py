@@ -29,10 +29,9 @@ class GPCExperiment(object):
 
     @timing
     def pima(self, dims=[1,5,6,7], depth=4, width=2):
-        data = pods.datasets.pima()
-        X, Y = data['X'][:,dims], data['Y']
-        XLabel = data['XLabel']
-        d = GPCData(X, Y, XLabel=XLabel)
+        data = pods.datasets.pima(dims=dims)
+        X, Y, XLabel = data['X'], data['Y'], data['XLabel']
+        d = GPCData(X, Y, XLabel=XLabel, YLabel=['not diabetic', 'diabetic'])
         print "\n\nPima Indian Diabetes dataset"
         print "=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
         search = GPCSearch(data=d, max_depth=depth, beam_width=width)
@@ -44,10 +43,9 @@ class GPCExperiment(object):
 
     @timing
     def wisconsin(self, dims=[0,1,4,5,7], depth=4, width=2):
-        data = pods.datasets.breastoriginal()
-        X, Y = data['X'][:,dims], data['Y']
-        XLabel = data['XLabel']
-        d = GPCData(X, Y, XLabel=XLabel)
+        data = pods.datasets.breastoriginal(dims=dims)
+        X, Y, XLabel = data['X'], data['Y'], data['XLabel']
+        d = GPCData(X, Y, XLabel=XLabel, YLabel=['no breast cancer', 'with breast cancer'])
         print "\n\nWisconsin Breast Cancer dataset"
         print "=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
         search = GPCSearch(data=d, max_depth=depth, beam_width=width)
@@ -58,10 +56,9 @@ class GPCExperiment(object):
 
     @timing
     def bupa(self, dims=range(5), depth=4, width=2):
-        data = pods.datasets.bupa()
-        X, Y = data['X'][:,dims], data['Y']
-        XLabel = data['XLabel']
-        d = GPCData(X, Y, XLabel=XLabel)
+        data = pods.datasets.bupa(dims=dims)
+        X, Y, XLabel = data['X'], data['Y'], data['XLabel']
+        d = GPCData(X, Y, XLabel=XLabel, YLabel=['$\\leq 5$ drink units', '$> 5$ drink units'])
         print "\n\nBUPA Liver Disorders dataset"
         print "=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
         search = GPCSearch(data=d, max_depth=depth, beam_width=width)
@@ -72,10 +69,9 @@ class GPCExperiment(object):
 
     @timing
     def cleveland(self, dims=range(13), depth=5, width=2):
-        data = pods.datasets.cleveland()
-        X, Y = data['X'][:,dims], data['Y']
-        XLabel = data['XLabel']
-        d = GPCData(X, Y, XLabel=XLabel)
+        data = pods.datasets.cleveland(dims=dims)
+        X, Y, XLabel = data['X'], data['Y'], data['XLabel']
+        d = GPCData(X, Y, XLabel=XLabel, YLabel=['no heart disease', 'with heart disease'])
         print "\n\nCleveland Heart Disease dataset"
         print "=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
         search = GPCSearch(data=d, max_depth=4, beam_width=2)
