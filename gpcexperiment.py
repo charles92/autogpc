@@ -32,7 +32,7 @@ class GPCExperiment(object):
         data = pods.datasets.pima()
         X, Y = data['X'][:,dims], data['Y']
         XLabel = data['XLabel']
-        d = GPCData(X, Y, XLabel=XLabel)
+        d = GPCData(X, Y, XLabel=XLabel, YLabel=['not diabetic', 'diabetic'])
         print "\n\nPima Indian Diabetes dataset"
         print "=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
         search = GPCSearch(data=d, max_depth=depth, beam_width=width)
@@ -47,7 +47,7 @@ class GPCExperiment(object):
         data = pods.datasets.breastoriginal()
         X, Y = data['X'][:,dims], data['Y']
         XLabel = data['XLabel']
-        d = GPCData(X, Y, XLabel=XLabel)
+        d = GPCData(X, Y, XLabel=XLabel, YLabel=['no breast cancer', 'with breast cancer'])
         print "\n\nWisconsin Breast Cancer dataset"
         print "=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
         search = GPCSearch(data=d, max_depth=depth, beam_width=width)
@@ -61,7 +61,7 @@ class GPCExperiment(object):
         data = pods.datasets.bupa()
         X, Y = data['X'][:,dims], data['Y']
         XLabel = data['XLabel']
-        d = GPCData(X, Y, XLabel=XLabel)
+        d = GPCData(X, Y, XLabel=XLabel, YLabel=['$\\leq 5$ drink units', '$> 5$ drink units'])
         print "\n\nBUPA Liver Disorders dataset"
         print "=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
         search = GPCSearch(data=d, max_depth=depth, beam_width=width)
@@ -75,7 +75,7 @@ class GPCExperiment(object):
         data = pods.datasets.cleveland()
         X, Y = data['X'][:,dims], data['Y']
         XLabel = data['XLabel']
-        d = GPCData(X, Y, XLabel=XLabel)
+        d = GPCData(X, Y, XLabel=XLabel, YLabel=['no heart disease', 'with heart disease'])
         print "\n\nCleveland Heart Disease dataset"
         print "=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
         search = GPCSearch(data=d, max_depth=4, beam_width=2)

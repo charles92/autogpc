@@ -6,3 +6,6 @@ from gpcexperiment import GPCExperiment
 ex = GPCExperiment()
 
 ex.bupa()
+ex.pima()
+ex.wisconsin()
+ex.cleveland()

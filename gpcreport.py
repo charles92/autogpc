@@ -78,7 +78,7 @@ class GPCReport(object):
             doc.append(ut.NoEscape(s))
             with doc.create(pl.Enumerate()) as enum:
                 for i in range(ndim):
-                    enum.add_item(dims2text([i], data, cap=True))
+                    enum.add_item(ut.NoEscape(dims2text([i], data, cap=True)))
 
             s = r"There is one binary output variable $y$: "
             doc.append(ut.NoEscape(s))
@@ -269,6 +269,7 @@ class GPCReport(object):
             with doc.create(pl.Figure(position='h!')) as fig:
                 fig.add_image(img1Filename, width=ut.NoEscape(r'0.5\textwidth'))
                 fig.add_caption(ut.NoEscape(caption_str))
+                self.fignum += 1
 
         else:
             # Present both current component and cumulative kernel
