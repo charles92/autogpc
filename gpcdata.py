@@ -75,12 +75,14 @@ class GPCData(object):
         xmin = self.X.min(axis=0).flatten().tolist()
         xmax = self.X.max(axis=0).flatten().tolist()
         ysd = self.Y.std()
+        ymu = self.Y.mean()
         return {
-            'x_mu':  xmu,
-            'x_sd':  xsd,
-            'x_min': xmin,
-            'x_max': xmax,
-            'y_sd':  ysd
+            'x_mu':   xmu,
+            'x_sd':   xsd,
+            'x_min':  xmin,
+            'x_max':  xmax,
+            'y_sd':   ysd,
+            'y_mean': ymu
         }
 
 

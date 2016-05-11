@@ -69,6 +69,19 @@ class GPCSearch(object):
         return best, best1d
 
 
+    def baseline(self):
+        """
+        Train the baseline model (constant kernel):
+        `flexible_function.ConstKernel` in GPSS
+        `GPy.kern.Bias` in GPy
+
+        :returns: trained `GPCKernel` object which uses a constant kernel
+        """
+        k = GPCKernel(ff.ConstKernel(), self.data)
+        k.train()
+        return k
+
+
 ##############################################
 #                                            #
 #             Helper Functions               #

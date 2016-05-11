@@ -473,7 +473,6 @@ def gpss2gpy(kernel, data=None):
         sf2 = kernel.sf ** 2
         ndim = data.getDim()
         gpyker = GPy.kern.Bias(ndim, variance=sf2, active_dims=np.array(range(ndim)))
-        gpyker['variance'].constrain_bounded(sf2min, sf2max, warning=False)
         return gpyker
 
     elif isinstance(kernel, ff.SumKernel):
@@ -543,6 +542,9 @@ def removeKernelParams(kernel):
     elif isinstance(kernel, ff.PeriodicKernel):
         return ff.PeriodicKernel(dimension=kernel.dimension)
 
+    elif isinstance(kernel, ff.ConstKernel):
+        return ff.ConstKernel()
+
     elif isinstance(kernel, ff.SumKernel):
         return ff.SumKernel(map(removeKernelParams, kernel.operands))
 
@@ -553,7 +555,7 @@ def removeKernelParams(kernel):
         return kernel
 
     else:
-        raise NotImplementedError("Cannot translate kernel of type " + type(kernel).__name__)
+        raise NotImplementedError("Unrecognised kernel type " + type(kernel).__name__)
 
 
 def isKernelEqual(k1, k2, compare_params=False, use_canonical=True):
