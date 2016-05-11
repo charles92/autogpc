@@ -7,6 +7,7 @@ import flexible_function as ff      # GPSS kernel definitions
 import grammar                      # GPSS kernel expansion
 import GPy
 from gpcplot import GPCPlot
+from gpcdata import GPCData
 
 
 class GPCKernel(object):
@@ -347,7 +348,7 @@ class GPCKernel(object):
         if self.model is not None:
             return list(self.model.kern.active_dims)
         else:
-            return list(gpss2gpy(self.kernel).active_dims)
+            return list(gpss2gpy(self.kernel, data=self.data).active_dims)
 
 
     def getGPyKernel(self):
@@ -429,8 +430,9 @@ def gpss2gpy(kernel, data=None):
     Support only:
     1) 1-D squared exponential kernels
     2) 1-D periodic kernels
-    3) sum kernels
-    4) product kernels
+    3) constant kernels (called `bias` in GPy)
+    4) sum kernels
+    5) product kernels
 
     :param kernel: GPSS kernel as defined in `flexible_function.py`
     :param data: `GPCData` object. If None (default), do not apply constraints
@@ -446,7 +448,6 @@ def gpss2gpy(kernel, data=None):
         ls = kernel.lengthscale
         dim = kernel.dimension
         gpyker = GPy.kern.RBF(1, variance=sf2, lengthscale=ls, active_dims=np.array([dim]))
-
         gpyker['variance'].constrain_bounded(sf2min, sf2max, warning=False)
         if data:
             gpyker['lengthscale'].constrain_bounded(data.minSeparation(dims=dim),
@@ -459,13 +460,20 @@ def gpss2gpy(kernel, data=None):
         ls = kernel.lengthscale
         dim = kernel.dimension
         gpyker = GPy.kern.StdPeriodic(1, variance=sf2, period=per, lengthscale=ls, active_dims=np.array([dim]))
-
         gpyker['variance'].constrain_bounded(sf2min, sf2max, warning=False)
         if data:
             gpyker['lengthscale'].constrain_bounded(data.minSeparation(dims=dim),
                 data.inputRange(dims=dim) * 2, warning=False)
             gpyker['period'].constrain_bounded(data.minSeparation(dims=dim) * 2,
                 data.inputRange(dims=dim), warning=False)
+        return gpyker
+
+    elif isinstance(kernel, ff.ConstKernel):
+        assert isinstance(data, GPCData), 'Must specify data field for ConstKernel'
+        sf2 = kernel.sf ** 2
+        ndim = data.getDim()
+        gpyker = GPy.kern.Bias(ndim, variance=sf2, active_dims=np.array(range(ndim)))
+        gpyker['variance'].constrain_bounded(sf2min, sf2max, warning=False)
         return gpyker
 
     elif isinstance(kernel, ff.SumKernel):
@@ -485,8 +493,9 @@ def gpy2gpss(kernel):
     Support only:
     1) 1-D squared exponential kernels
     2) 1-D periodic kernels
-    3) sum kernels
-    4) product kernels
+    3) constant kernels (called `bias` in GPy)
+    4) sum kernels
+    5) product kernels
 
     :param kernel: a GPSS kernel as defined in flexible_function.py
     :returns: an object of type GPy.kern.Kern
@@ -505,6 +514,10 @@ def gpy2gpss(kernel):
         per = kernel.period[0]
         dim = kernel.active_dims[0]
         return ff.PeriodicKernel(dimension=dim, lengthscale=ls, period=per, sf=sf)
+
+    elif isinstance(kernel, GPy.kern.Bias):
+        sf = np.sqrt(kernel.variance)[0]
+        return ff.ConstKernel(sf=sf)
 
     elif isinstance(kernel, GPy.kern.Add):
         return ff.SumKernel(map(gpy2gpss, kernel.parts))

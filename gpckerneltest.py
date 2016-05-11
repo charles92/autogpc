@@ -35,7 +35,11 @@ getGPyKernelTest(k2, data)
 
 # Periodic
 kp = ff.PeriodicKernel(dimension=0, lengthscale=5, period=4, sf=1.5)
-getGPyKernelTest(k2, data)
+getGPyKernelTest(kp, data)
+
+# Const
+kc = ff.ConstKernel(sf=2.0)
+getGPyKernelTest(kc, data)
 
 # Sum
 k3 = ff.SumKernel([k1, k2])
@@ -56,6 +60,11 @@ kk2 = GPyKern.RBF(1, variance=4, lengthscale=6, active_dims=np.array([1]))
 kks = GPyKern.Add([kk1, kk2])
 print kks
 print gpckernel.gpy2gpss(kks).pretty_print()
+
+print "\n\nGPy2GPSS: Const:"
+kkc = GPyKern.Bias(3, variance=3, active_dims=np.array([0,1,2]))
+print kkc
+print gpckernel.gpy2gpss(kkc).pretty_print()
 
 # Expansion
 kern = gpckernel.GPCKernel(k1, data, 1)
