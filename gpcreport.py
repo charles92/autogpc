@@ -130,23 +130,46 @@ class GPCReport(object):
 
         doc = self.doc
         with doc.create(pl.Subsection(ut.NoEscape(dims2text([dim], data, cap=True)))):
+            # Routine description
             s = dims2text([dim], data, cap=True) + " has " \
               + "mean value {0:.2f} and standard deviation {1:.2f}. ".format(xmu, xsd) \
               + "Its observed minimum and maximum are {0:.2f} and {1:.2f} respectively. ".format(xmin, xmax) \
               + "A GP classifier trained on this variable alone can achieve " \
               + r"a cross-validated training error of {0:.2f}\%. ".format(error * 100)
-            if mon != 0:
-                corr_str = "positive" if mon > 0 else "negative"
-                s = s + "There is a " + corr_str + " correlation between the value " \
-                      + "of this variable and the likelihood of the sample being " \
-                      + "classified as positive. "
-            elif per != 0:
-                s = s + "The class assignment is approximately periodic with " \
-                      + dims2text([dim], data) + ". " \
-                      + "The period is about {0:.2f}. ".format(per)
+
+            # Significance
+            e0 = float(self.constker.error())
+            if error / e0 < 0.25:
+                s += "Compared with the null model (baseline), this variable "
+                s += "contains strong evidence whether the sample belongs to "
+                s += "class ``{0}''. ".format(data.YLabel[1])
+            elif error / e0 < 0.8:
+                s += "Compared with the null model (baseline), this variable "
+                s += "contains some evidence of class label assignment. "
+            elif error / e0 < 1.0:
+                s += "This variable provides little evidence of class label "
+                s += r"assignment given a baseline error rate of {0:.2f}\%. ".format(e0 * 100)
             else:
-                s = s + "No monotonicity or periodicity is associated with this variable. "
-            s = s + "The GP posterior trained on this variable is plotted in Figure {0}. ".format(self.fignum)
+                s += "The classification performance (in terms of error rate) "
+                s += "based on this variable alone is even worse than "
+                s += r'that of the na{\"i}ve baseline classifier. '
+
+            # Monotonicity and periodicity - only do this for significant factors
+            if error / e0 < 0.8:
+                if mon != 0:
+                    corr_str = "positive" if mon > 0 else "negative"
+                    s += "There is a " + corr_str + " correlation between the value "
+                    s += "of this variable and the likelihood of the sample being "
+                    s += "classified as positive. "
+                elif per != 0:
+                    s += "The class assignment is approximately periodic with "
+                    s += dims2text([dim], data) + ". "
+                    s += "The period is about {0:.2f}. ".format(per)
+                else:
+                    s += "No significant monotonicity or periodicity "
+                    s += "is associated with this variable. "
+
+            s += "The GP posterior trained on this variable is plotted in Figure {0}. ".format(self.fignum)
             doc.append(ut.NoEscape(s))
 
             # Plotting
