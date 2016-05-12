@@ -473,7 +473,7 @@ def gpss2gpy(kernel, data=None):
     assert isinstance(kernel, ff.Kernel), "kernel must be of type flexible_function.Kernel"
 
     # Hard-coded constraint on sf
-    sf2min, sf2max = 0.1 ** 2, 20 ** 2
+    sf2min, sf2max = 0.2 ** 2, 20 ** 2
 
     if isinstance(kernel, ff.SqExpKernel):
         sf2 = kernel.sf ** 2
