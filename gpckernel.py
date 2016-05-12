@@ -366,6 +366,11 @@ class GPCKernel(object):
         compute error rate over the entire training set (i.e. without
         cross-validation).
         """
+        if isinstance(self.kernel, ff.ConstKernel):
+            # TODO: this is ugly
+            d = self.data
+            return min(d.getClass(0).shape[0], d.getClass(1).shape[0]) / float(d.getNum())
+
         if not hasattr(self, 'errorRate') or self.errorRate is None:
             self.errorRate = computeError(self.model, self.data.X, self.data.Y)
         return self.errorRate
@@ -414,6 +419,33 @@ class GPCKernel(object):
             return self.kernel.period
         else:
             return 0.0
+
+
+    def shortInterp(self):
+        """
+        Interpretation of current kernel:
+        SE       - smooth
+        Periodic - periodic
+        Const    - constant
+        Sum      - additive
+        Prod     - interaction
+        None     - null
+        """
+        k = self.kernel
+        if isinstance(k, ff.SqExpKernel):
+            return "smooth"
+        elif isinstance(k, ff.PeriodicKernel):
+            return "periodic"
+        elif isinstance(k, ff.ConstKernel):
+            return "constant"
+        elif isinstance(k, ff.SumKernel):
+            return "additive"
+        elif isinstance(k, ff.ProductKernel):
+            return "interaction"
+        elif isinstance(k, ff.NoneKernel):
+            return "null"
+        else:
+            raise NotImplementedError("Unrecognised kernel type.")
 
 
 ##############################################

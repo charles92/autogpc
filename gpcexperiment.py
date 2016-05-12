@@ -36,7 +36,8 @@ class GPCExperiment(object):
         print "=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
         search = GPCSearch(data=d, max_depth=depth, beam_width=width)
         best, best1d = search.search()
-        report = GPCReport(name='Pima', history=best, best1d=best1d)
+        constker = search.baseline()
+        report = GPCReport(name='Pima', history=best, best1d=best1d, constkernel=constker)
         report.export()
         print ""
 
@@ -50,7 +51,8 @@ class GPCExperiment(object):
         print "=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
         search = GPCSearch(data=d, max_depth=depth, beam_width=width)
         best, best1d = search.search()
-        report = GPCReport(name='Wisconsin', history=best, best1d=best1d)
+        constker = search.baseline()
+        report = GPCReport(name='Wisconsin', history=best, best1d=best1d, constkernel=constker)
         report.export()
 
 
@@ -63,7 +65,8 @@ class GPCExperiment(object):
         print "=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
         search = GPCSearch(data=d, max_depth=depth, beam_width=width)
         best, best1d = search.search()
-        report = GPCReport(name='BUPA', history=best, best1d=best1d)
+        constker = search.baseline()
+        report = GPCReport(name='BUPA', history=best, best1d=best1d, constkernel=constker)
         report.export()
 
 
@@ -76,14 +79,6 @@ class GPCExperiment(object):
         print "=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
         search = GPCSearch(data=d, max_depth=4, beam_width=2)
         best, best1d = search.search()
-        report = GPCReport(name='Cleveland', history=best, best1d=best1d)
+        constker = search.baseline()
+        report = GPCReport(name='Cleveland', history=best, best1d=best1d, constkernel=constker)
         report.export()
-
-
-##############################################
-#                                            #
-#             Helper Functions               #
-#                                            #
-##############################################
-
-

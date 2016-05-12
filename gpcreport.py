@@ -13,10 +13,11 @@ class GPCReport(object):
     AutoGPC data analysis report.
     """
 
-    def __init__(self, root='./latex', name='default', paper='a4paper', history=None, best1d=None):
+    def __init__(self, root='./latex', name='default', paper='a4paper', history=None, best1d=None, constkernel=None):
         self.name = name
         self.history = history
         self.best1d = best1d
+        self.constker = constkernel
         self.kers, self.cums = cumulateAdditiveKernels(history[-1].toSummands())
 
         # Prepare directory
@@ -156,6 +157,68 @@ class GPCReport(object):
                 self.fignum += 1
 
 
+    def tabulateVariables(self):
+        """
+        Create a table that summarises all input variables.
+        """
+        ks = self.best1d[:]
+        ks.append(self.constker)
+        data = ks[0].data
+        ds = data.getDataShape()
+
+        nlml_min_k = min(ks, key=lambda k: k.getNLML())
+        error_min_k = min(ks, key=lambda k: k.error())
+
+        doc = self.doc
+        with doc.create(pl.Table(position='h!')) as tab:
+            tab.add_caption(ut.NoEscape("Input variables"))
+
+            t = pl.Tabular('rl|rrr|crr')
+            t.add_hline()
+            t.add_hline()
+            t.add_row((
+                pl.MultiColumn(1, align='c', data=''),
+                pl.MultiColumn(1, align='c|', data=ut.bold('Variable')),
+                pl.MultiColumn(1, align='c', data=ut.bold('Min')),
+                pl.MultiColumn(1, align='c', data=ut.bold('Max')),
+                pl.MultiColumn(1, align='c|', data=ut.bold('Mean')),
+                pl.MultiColumn(1, align='c', data=ut.bold('Kernel')),
+                pl.MultiColumn(1, align='c', data=ut.bold('NLML')),
+                pl.MultiColumn(1, align='c', data=ut.bold('Error')) ))
+            t.add_hline()
+
+            for k in ks:
+                if k is self.constker:
+                    row = (
+                        ut.NoEscape('--'),
+                        'Baseline',
+                        ut.NoEscape('--'),
+                        ut.NoEscape('--'),
+                        ut.NoEscape('--'),
+                        k.shortInterp(),
+                        ut.NoEscape('{0:.2f}'.format(k.getNLML())),
+                        ut.NoEscape(r'{0:.2f}\%'.format(k.error()*100)) )
+                    t.add_row(row, mapper=ut.italic)
+                else:
+                    dim = k.getActiveDims()[0]
+                    row = (
+                        dim+1,
+                        data.XLabel[dim],
+                        '{0:.2f}'.format(ds['x_min'][dim]),
+                        '{0:.2f}'.format(ds['x_max'][dim]),
+                        '{0:.2f}'.format(ds['x_mu'][dim]),
+                        k.shortInterp())
+                    nlml_str = ut.NoEscape('{0:.2f}'.format(k.getNLML()))
+                    row += (ut.bold(nlml_str) if k is nlml_min_k else nlml_str, )
+                    error_str = ut.NoEscape(r'{0:.2f}\%'.format(k.error()*100))
+                    row += (ut.bold(error_str) if k is error_min_k else error_str, )
+                    t.add_row(row)
+            t.add_hline()
+
+            tab.append(ut.NoEscape(r'\centering'))
+            tab.append(t)
+
+
     def describeVariables(self):
         """
         Generate a section describing all input dimensions / variables.
@@ -176,6 +239,8 @@ class GPCReport(object):
               + "cross-validated training error of the best one-dimensional " \
               + "GP classifier): "
             doc.append(ut.NoEscape(s))
+
+            self.tabulateVariables()
 
             for i in range(n_terms):
                 self.describeOneVariable(self.best1d[i])
