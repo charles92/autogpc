@@ -201,20 +201,28 @@ class GPCReport(object):
         with doc.create(pl.Table(position='h!')) as tab:
             tab.add_caption(ut.NoEscape("Input variables"))
 
-            t = pl.Tabular('rl|rrr|crr')
-            t.add_hline()
+            t = pl.Tabular('rlrrrcrr')
+            # Header
             t.add_hline()
             t.add_row((
-                pl.MultiColumn(1, align='c', data=''),
-                pl.MultiColumn(1, align='c|', data=ut.bold('Variable')),
-                pl.MultiColumn(1, align='c', data=ut.bold('Min')),
-                pl.MultiColumn(1, align='c', data=ut.bold('Max')),
-                pl.MultiColumn(1, align='c|', data=ut.bold('Mean')),
-                pl.MultiColumn(1, align='c', data=ut.bold('Kernel')),
-                pl.MultiColumn(1, align='c', data=ut.bold('NLML')),
-                pl.MultiColumn(1, align='c', data=ut.bold('Error')) ))
+                '',
+                '',
+                pl.MultiColumn(3, align='c', data='Statistics'),
+                pl.MultiColumn(3, align='c', data='Classifier Performance')
+                ))
+            t.add_hline(start=3, end=8)
+            t.add_row((
+                pl.MultiColumn(1, align='c', data='Dimension'),
+                pl.MultiColumn(1, align='c', data='Variable'),
+                pl.MultiColumn(1, align='c', data='Min'),
+                pl.MultiColumn(1, align='c', data='Max'),
+                pl.MultiColumn(1, align='c', data='Mean'),
+                pl.MultiColumn(1, align='c', data='Kernel'),
+                pl.MultiColumn(1, align='c', data='NLML'),
+                pl.MultiColumn(1, align='c', data='Error') ))
             t.add_hline()
 
+            # Entries
             for k in ks:
                 if k is self.constker:
                     row = [
