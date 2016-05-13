@@ -18,7 +18,8 @@ class GPCReport(object):
         self.history = history
         self.best1d = best1d
         self.constker = constkernel
-        self.kers, self.cums = cumulateAdditiveKernels(history[-1].toSummands())
+        self.summands = history[-1].toSummands()
+        self.kers, self.cums = cumulateAdditiveKernels(self.summands)
 
         # Prepare directory
         p = os.path.join(root, name)
@@ -38,6 +39,7 @@ class GPCReport(object):
         self.makeDataSummary()
         self.describeVariables()
         self.describeAdditiveComponents()
+        self.makeSummary()
 
 
     def makePreamble(self, paper='a4paper'):
@@ -190,12 +192,13 @@ class GPCReport(object):
         """
         ks = self.best1d[:]
         ks.append(self.constker)
-        ks.sort(key=lambda k: k.error())
+        ks.sort(key=lambda k: round(k.getNLML(), 2))
+        ks.sort(key=lambda k: round(k.error(), 2))
         data = ks[0].data
         ds = data.getDataShape()
 
-        nlml_min_k = min(ks, key=lambda k: k.getNLML())
-        error_min_k = min(ks, key=lambda k: k.error())
+        nlml_min = round(min([k.getNLML() for k in ks]), 2)
+        error_min = round(min([k.error() for k in ks]), 2)
 
         doc = self.doc
         with doc.create(pl.Table(position='h!')) as tab:
@@ -245,9 +248,9 @@ class GPCReport(object):
                         k.shortInterp(),
                         ut.NoEscape('{0:.2f}'.format(k.getNLML())),
                         ut.NoEscape(r'{0:.2f}\%'.format(k.error()*100)) ]
-                if k is nlml_min_k:
+                if round(k.getNLML(), 2) == nlml_min:
                     row[6] = ut.bold(row[6])
-                if k is error_min_k:
+                if round(k.error(), 2) == error_min:
                     row[7] = ut.bold(row[7])
 
                 t.add_row(tuple(row))
@@ -328,6 +331,64 @@ class GPCReport(object):
             self.makeInteractionFigure(ker, cum, term)
 
 
+    def tabulateAll(self):
+        """
+        Create a table that summarises all input variables and additive
+        components, including the constant kernel as baseline.
+        """
+        ks = self.best1d[:]
+        ks.append(self.constker)
+        ks.extend(self.summands)
+        ks.sort(key=lambda k: round(k.getNLML(), 2))
+        ks.sort(key=lambda k: round(k.error(), 2))
+        data = ks[0].data
+        ds = data.getDataShape()
+
+        nlml_min = round(min([k.getNLML() for k in ks]), 2)
+        error_min = round(min([k.error() for k in ks]), 2)
+
+        doc = self.doc
+        with doc.create(pl.Table(position='h!')) as tab:
+            tab.add_caption(ut.NoEscape("All input variables and additive components"))
+
+            t = pl.Tabular('rlrr')
+            # Header
+            t.add_hline()
+            t.add_row((
+                pl.MultiColumn(1, align='c', data='Dimensions'),
+                pl.MultiColumn(1, align='c', data='Kernel expression'),
+                pl.MultiColumn(1, align='c', data='NLML'),
+                pl.MultiColumn(1, align='c', data='Error') ))
+            t.add_hline()
+
+            # Entries
+            for k in ks:
+                if k is self.constker:
+                    row = [
+                        ut.italic('--', escape=False),
+                        ut.italic('$' + k.latex() + '$ (Baseline)', escape=False),
+                        ut.italic('{0:.2f}'.format(k.getNLML()), escape=False),
+                        ut.italic(r'{0:.2f}\%'.format(k.error()*100), escape=False) ]
+                else:
+                    dims = sorted(k.getActiveDims())
+                    row = [
+                        ut.NoEscape(', '.join([str(d + 1) for d in dims])),
+                        ut.NoEscape('$' + k.latex() + '$'),
+                        ut.NoEscape('{0:.2f}'.format(k.getNLML())),
+                        ut.NoEscape(r'{0:.2f}\%'.format(k.error()*100)) ]
+                if round(k.getNLML(), 2) == nlml_min:
+                    row[2] = ut.bold(row[2])
+                if round(k.error(), 2) == error_min:
+                    row[3] = ut.bold(row[3])
+
+                t.add_row(tuple(row))
+
+            t.add_hline()
+
+            tab.append(ut.NoEscape(r'\centering'))
+            tab.append(t)
+
+
     def describeAdditiveComponents(self):
         """
         Generate a section describing all additive components present.
@@ -345,6 +406,18 @@ class GPCReport(object):
             doc.append(ut.NoEscape(s))
             for i in range(1, n_terms + 1):
                 self.describeOneAdditiveComponent(i)
+
+
+    def makeSummary(self):
+        """
+        Generate the summary section.
+        """
+        doc = self.doc
+        with doc.create(pl.Section("Summary")):
+            s = "TODO: summary."
+            doc.append(s)
+
+            self.tabulateAll()
 
 
     def makeInteractionFigure(self, ker, cum, n_terms):

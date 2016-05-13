@@ -448,6 +448,16 @@ class GPCKernel(object):
             raise NotImplementedError("Unrecognised kernel type.")
 
 
+    def latex(self):
+        """
+        Short latex expression representing the compositional kernel.
+        e.g. "SE1", "SE2 x Per3", "C + SE2", etc.
+
+        :returns: kernel expression string (must be used in math mode)
+        """
+        return gpss2latex(self.kernel)
+
+
 ##############################################
 #                                            #
 #             Helper Functions               #
@@ -558,6 +568,44 @@ def gpy2gpss(kernel):
 
     else:
         raise NotImplementedError("Cannot translate kernel of type " + type(kernel).__name__)
+
+
+def gpss2latex(k):
+    """
+    Short latex expression representing the compositional kernel.
+    e.g. "SE1", "SE2 x Per3", "C + SE2", etc.
+
+    :param k: GPSS kernel
+    :type k: flexible_function.Kernel
+    :returns: kernel expression string (must be used in math mode)
+    """
+    assert isinstance(k, ff.Kernel), "kernel must be of type flexible_function.Kernel"
+
+    if isinstance(k, ff.NoneKernel):
+        return r"{\textsc{Null}}"
+
+    elif isinstance(k, ff.ConstKernel):
+        return r"{\textsc{C}}"
+
+    elif isinstance(k, ff.SqExpKernel):
+        return r"{{\textsc{{SE{0}}}}}".format(k.dimension + 1)
+
+    elif isinstance(k, ff.PeriodicKernel):
+        return r"{{\textsc{{Per{0}}}}}".format(k.dimension + 1)
+
+    elif isinstance(k, ff.SumKernel):
+        return " + ".join([gpss2latex(o) for o in k.operands])
+
+    elif isinstance(k, ff.ProductKernel):
+        terms = []
+        for o in k.operands:
+            if isinstance(o, ff.SumKernel):
+                terms.append('( ' + gpss2latex(o) + ' )')
+            else:
+                terms.append(gpss2latex(o))
+        return r" \times ".join(terms)
+    else:
+        raise NotImplementedError("Unrecognised kernel type " + type(k).__name__)
 
 
 def removeKernelParams(kernel):
