@@ -193,12 +193,12 @@ class GPCReport(object):
         ks = self.best1d[:]
         ks.append(self.constker)
         ks.sort(key=lambda k: round(k.getNLML(), 2))
-        ks.sort(key=lambda k: round(k.error(), 2))
+        ks.sort(key=lambda k: round(k.error(), 4))
         data = ks[0].data
         ds = data.getDataShape()
 
         nlml_min = round(min([k.getNLML() for k in ks]), 2)
-        error_min = round(min([k.error() for k in ks]), 2)
+        error_min = round(min([k.error() for k in ks]), 4)
 
         doc = self.doc
         with doc.create(pl.Table(position='h!')) as tab:
@@ -250,7 +250,7 @@ class GPCReport(object):
                         ut.NoEscape(r'{0:.2f}\%'.format(k.error()*100)) ]
                 if round(k.getNLML(), 2) == nlml_min:
                     row[6] = ut.bold(row[6])
-                if round(k.error(), 2) == error_min:
+                if round(k.error(), 4) == error_min:
                     row[7] = ut.bold(row[7])
 
                 t.add_row(tuple(row))
@@ -338,14 +338,16 @@ class GPCReport(object):
         """
         ks = self.best1d[:]
         ks.append(self.constker)
-        ks.extend(self.summands)
+        for k in self.summands:
+            if len(k.getActiveDims()) > 1:
+                ks.append(k)
         ks.sort(key=lambda k: round(k.getNLML(), 2))
-        ks.sort(key=lambda k: round(k.error(), 2))
+        ks.sort(key=lambda k: round(k.error(), 4))
         data = ks[0].data
         ds = data.getDataShape()
 
         nlml_min = round(min([k.getNLML() for k in ks]), 2)
-        error_min = round(min([k.error() for k in ks]), 2)
+        error_min = round(min([k.error() for k in ks]), 4)
 
         doc = self.doc
         with doc.create(pl.Table(position='h!')) as tab:
@@ -378,7 +380,7 @@ class GPCReport(object):
                         ut.NoEscape(r'{0:.2f}\%'.format(k.error()*100)) ]
                 if round(k.getNLML(), 2) == nlml_min:
                     row[2] = ut.bold(row[2])
-                if round(k.error(), 2) == error_min:
+                if round(k.error(), 4) == error_min:
                     row[3] = ut.bold(row[3])
 
                 t.add_row(tuple(row))

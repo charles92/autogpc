@@ -44,7 +44,7 @@ class GPCSearch(object):
             for k in kernels:
                 k.train()
             print "\n=====\nFully expanded kernel set at depth {0}:".format(depth+1)
-            print '\n'.join(k.__repr__() for k in kernels)
+            print '\n'.join(str(k) for k in kernels)
 
             kernels = sorted(kernels, key=lambda x: x.error())
             if len(kernels) == 0 or kernels[0].error() >= best[-1].error():
@@ -55,17 +55,41 @@ class GPCSearch(object):
                 kernels = kernels[:self.beamWidth]
             depth = depth + 1
 
+        # In case an additive component is 1-D, and performs better than the
+        # initial 1-D kernel (this is possible due to random initialisation,
+        # etc.), we replace that 1-D kernel with the one found in additive
+        # components.
+        summands = best[-1].toSummands()
+        summands1d = filter(lambda k: len(k.getActiveDims()) == 1, summands)
+        for k in summands1d:
+            for i in range(len(kernels1d)):
+                if k.equals(kernels1d[i]) and k.betterThan(kernels1d[i]):
+                    kernels1d[i] = k
+                    break
+        best1d = bestKernels1D(kernels1d)
+
+        # In case the best search result is just a 1-D kernel, and it performs
+        # worse than the kernel in `best1d`, we replace the one in `best` and
+        # `summands` with this better kernel
+        if len(best[-1].getActiveDims()) == 1:
+            for k in best1d:
+                if k.equals(best[-1]) and k.betterThan(best[-1]):
+                    best[-1] = k
+                    summands[0] = k
+                    break
+
         print "\n=====\nSearch completed. Best kernels at each depth:"
         for k in best:
             print k
+
         print "\n=====\nSummands:"
-        summands = best[-1].toSummands()
         for k in summands:
             print k
+
         print "\n=====\nBest 1-D kernels:"
-        best1d = bestKernels1D(kernels1d)
         for k in best1d:
             print k
+
         return best, best1d
 
 

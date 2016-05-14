@@ -79,6 +79,30 @@ class GPCKernel(object):
         return isKernelEqual(self.kernel, other.kernel, compare_params=strict, use_canonical=canonical)
 
 
+    def betterThan(self, other, strict=False):
+        """
+        Check if this kernel is better than another kernel in terms of error rate
+        and log marginal likelihood.
+
+        :param other: kernel of type `GPCKernel` which is to be compared
+        :param strict: check strict floating point equality; default to False
+        :returns: True if `self` is better than `other`
+        """
+        e0, e1 = self.error(), other.error()
+        l0, l1 = self.getNLML(), other.getNLML()
+        if not strict:
+            e0, e1 = round(e0, 4), round(e1, 4)
+            l0, l1 = round(l0, 2), round(l1, 2)
+        if e0 < e1:
+            return True
+        elif e0 > e1:
+            return False
+        elif l0 < l1:
+            return True
+        else:
+            return False
+
+
     def add(self, other):
         """
         Create a sum kernel by adding another kernel to the current kernel.
