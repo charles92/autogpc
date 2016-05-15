@@ -49,6 +49,8 @@ class GPCReport(object):
         doc.packages.append(pl.Package('hyperref'))
         doc.packages.append(pl.Package('babel', options=['UKenglish']))
         doc.packages.append(pl.Package('isodate', options=['UKenglish']))
+        doc.packages.append(pl.Package('siunitx'))
+        doc.packages.append(ut.NoEscape(r'\sisetup{round-precision=2,round-mode=figures,scientific-notation=true}'))
 
         title_str = r'AutoGPC Data Analysis Report on ' + self.name + ' Dataset'
         doc.preamble.append(pl.Command('title', ut.NoEscape(title_str)))
@@ -427,10 +429,21 @@ class GPCReport(object):
             doc.append(s)
             self.tabulateAll()
 
+            dims = np.array(best.getActiveDims())
+            xvar = np.square(np.array(data.getDataShape()['x_sd'])[dims])
+            stvt = np.vstack((dims, best.sensitivity()))
+            # TODO: Shall we normalise?
+            # stvt = np.vstack((dims, best.sensitivity() / xvar))
+            stvt = stvt[:,stvt[1,::-1].argsort()] # Sort in descending order
+
             s = "The best kernel that we have found relates the class label assignment " \
-              + "to input " + dims2text(best.getActiveDims(), data) + ". "
+              + "to input " + dims2text(stvt[0,:].astype(int).tolist(), data)
             if ndim > 1:
-                s += "In specific, the model involves "
+                s += " (in descending order of contribution). "
+                s += "Their variance-based sensitivities are "
+                s += list2text([r'\num{{{0}}}'.format(val) for val in stvt[1,:]])
+                s += ", respectively. "
+                s += "\n\nIn specific, the model involves "
                 if len(summands) == 1:
                     s += prod2text(summands[0].getActiveDims(), data)
                 else:
@@ -438,10 +451,11 @@ class GPCReport(object):
             s += " ($" + best.latex() + "$). "
             doc.append(ut.NoEscape(s))
 
-            s = "This model can achieve " \
+            s = "\n\nThis model can achieve " \
               + r"a cross-validated training error rate of {0:.2f}\% and ".format(best.error() * 100) \
               + r"a negative log marginal likelihood of {0:.2f}. ".format(best.getNLML())
             doc.append(ut.NoEscape(s))
+
 
     def makeInteractionFigure(self, ker, cum, n_terms):
         """
