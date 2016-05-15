@@ -8,16 +8,21 @@ from gpcreport import GPCReport
 from gpcsearch import GPCSearch
 
 data = pods.datasets.pima()
-X = data['X'][:,[1,5,6,7]]
-Y = data['Y']
+X = data['X'][:250,[1,5,6,7]]
+Y = data['Y'][:250]
 
 d = GPCData(X, Y, XLabel=['plasma glucose', 'BMI', 'pedigree function', 'age'])
 print "\n=====\nData size: D = %d, N = %d." % (d.getDim(), d.getNum())
 
-search = GPCSearch(data=d, max_depth=4, beam_width=2)
+search = GPCSearch(data=d, max_depth=3, beam_width=1)
 best, best1d = search.search()
 
-report = GPCReport(name='Pima', history=best, best1d=best1d)
+print "\n=====\nBaseline:"
+ck = search.baseline()
+print ck
+print "error = {}".format(ck.error())
+
+report = GPCReport(name='Pima', history=best, best1d=best1d, constkernel=ck)
 report.export()
 
 
@@ -30,14 +35,17 @@ report.export()
 # Ynum = np.zeros(Y.size)
 # Ynum[virgi_ind] = 1
 # Ynum = np.hstack((Ynum[versi_ind], Ynum[virgi_ind])).reshape(X.shape[0], 1)
-
-# d = GPCData(X, Ynum, XLabel=['Sepal Length', 'Sepal Width', 'Petal Length', 'Petal Width'])
+# d = GPCData(X, Ynum, XLabel=['Sepal Length', 'Sepal Width', 'Petal Length', 'Petal Width'], YLabel=['Versicolor', 'Virginica'])
 # print "Data size = %d" % (d.getDim() * d.getNum())
-
 # search = GPCSearch(data=d, max_depth=4, beam_width=2)
 # best, best1d = search.search()
 
-# report = GPCReport(name='Iris', history=best, best1d=best1d)
+# print "\n=====\nBaseline:"
+# ck = search.baseline()
+# print ck
+# print "error = {}".format(ck.error())
+
+# report = GPCReport(name='Iris', history=best, best1d=best1d, constkernel=ck)
 # report.export()
 
 

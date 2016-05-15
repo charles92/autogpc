@@ -81,6 +81,9 @@ class GPCSearch(object):
         print "\n=====\nSearch completed. Best kernels at each depth:"
         for k in best:
             print k
+        # k = best[-1]
+        # print k.getActiveDims()
+        # print k.model.input_sensitivity()
 
         print "\n=====\nSummands:"
         for k in summands:

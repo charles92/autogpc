@@ -331,6 +331,25 @@ class GPCReport(object):
             self.makeInteractionFigure(ker, cum, term)
 
 
+    def describeAdditiveComponents(self):
+        """
+        Generate a section describing all additive components present.
+        """
+        n_terms = len(self.kers)
+        error = self.cums[-1].error()
+        doc = self.doc
+        with doc.create(pl.Section("Additive Component Analysis")):
+            s = r"The pattern underlying the dataset can be decomposed into " \
+              + r"{0} additive components, ".format(n_terms) \
+              + r"which contribute jointly to the final classifier which we have trained. " \
+              + r"With all components in action, the classifier can achieve " \
+              + r"a cross-validated training error rate of {0:.2f}\%. ".format(error * 100) \
+              + r"The performance cannot be further improved by adding more components. "
+            doc.append(ut.NoEscape(s))
+            for i in range(1, n_terms + 1):
+                self.describeOneAdditiveComponent(i)
+
+
     def tabulateAll(self):
         """
         Create a table that summarises all input variables and additive
@@ -391,36 +410,38 @@ class GPCReport(object):
             tab.append(t)
 
 
-    def describeAdditiveComponents(self):
-        """
-        Generate a section describing all additive components present.
-        """
-        n_terms = len(self.kers)
-        error = self.cums[-1].error()
-        doc = self.doc
-        with doc.create(pl.Section("Additive Component Analysis")):
-            s = r"The pattern underlying the dataset can be decomposed into " \
-              + r"{0} additive components, ".format(n_terms) \
-              + r"which contribute jointly to the final classifier which we have trained. " \
-              + r"With all components in action, the classifier can achieve " \
-              + r"a cross-validated training error rate of {0:.2f}\%. ".format(error * 100) \
-              + r"The performance cannot be further improved by adding more components. "
-            doc.append(ut.NoEscape(s))
-            for i in range(1, n_terms + 1):
-                self.describeOneAdditiveComponent(i)
-
-
     def makeSummary(self):
         """
         Generate the summary section.
         """
+        best = self.cums[-1]
+        data = best.data
+        ndim = data.getDim()
+        summands = self.summands
+
         doc = self.doc
         with doc.create(pl.Section("Summary")):
-            s = "TODO: summary."
+            s = "In Table 2 we list all input variables as well as " \
+              + "more complicated additive components (if any) considered above, " \
+              + "ranked by their cross-validated training error rate. "
             doc.append(s)
-
             self.tabulateAll()
 
+            s = "The best kernel that we have found relates the class label assignment " \
+              + "to input " + dims2text(best.getActiveDims(), data) + ". "
+            if ndim > 1:
+                s += "In specific, the model involves "
+                if len(summands) == 1:
+                    s += prod2text(summands[0].getActiveDims(), data)
+                else:
+                    s += sum2text(summands)
+            s += " ($" + best.latex() + "$). "
+            doc.append(ut.NoEscape(s))
+
+            s = "This model can achieve " \
+              + r"a cross-validated training error rate of {0:.2f}\% and ".format(best.error() * 100) \
+              + r"a negative log marginal likelihood of {0:.2f}. ".format(best.getNLML())
+            doc.append(ut.NoEscape(s))
 
     def makeInteractionFigure(self, ker, cum, n_terms):
         """
@@ -492,6 +513,31 @@ class GPCReport(object):
 #                                            #
 ##############################################
 
+def list2text(l, cap=False):
+    """
+    Convert a list of strings to natural language. For example:
+    ['a'] -> a
+    ['a', 'b'] -> a and b
+    ['a', 'b', 'c'] -> a, b and c
+    etc.
+
+    :param l: list of strings to be concatenated
+    :param cap: captitalise first letter if True (default to False)
+    :type cap: boolean
+    :returns: text representation of list
+    """
+    if len(l) == 0:
+        return ""
+    if len(l) == 1:
+        return str(l[0])
+    else:
+        text = ""
+        for i in range(len(l) - 2):
+            text = text + "{0}, ".format(l[i])
+        text += "{0} and {1}".format(l[-2], l[-1])
+        return text
+
+
 def dims2text(dims, data, cap=False):
     """
     Convert a list of dimensions to their names.
@@ -500,18 +546,62 @@ def dims2text(dims, data, cap=False):
     :param data: `GPCData` object
     :param cap: captitalise first letter if True (default to False)
     :type cap: boolean
+    :returns: text representation of dimensions
     """
     assert len(dims) > 0, 'The list of dimensions must contain at least one member.'
 
     xl = data.XLabel
     text = "Variable" if cap else "variable"
-    if len(dims) == 1:
-        text = text + " ``{0}''".format(xl[dims[0]])
-    else:
-        text = text + "s "
-        for i in range(len(dims) - 2):
-            text = text + "``{0}'', ".format(xl[dims[i]])
-        text = text + r"``{0}'' and ``{1}''".format(xl[dims[-2]],xl[dims[-1]])
+    if len(dims) > 1: text += "s"
+    text += " "
+    text += list2text([r"``{}''".format(xl[d]) for d in dims])
+
+    return text
+
+
+def prod2text(dims, data, cap=False):
+    """
+    Convert a product kernel to text description.
+
+    :param dims: list of dimensions (i.e. integers)
+    :param data: `GPCData` object
+    :param cap: captitalise first letter if True (default to False)
+    :type cap: boolean
+    :returns: description of kernel
+    """
+    assert len(dims) > 1, 'The list of dimensions must contain at least two members.'
+
+    xl = data.XLabel
+    text = "A " if cap else "a "
+    text += "{}-way interaction between ".format(len(dims))
+    text += dims2text(dims, data)
+
+    return text
+
+
+def sum2text(summands, cap=False):
+    """
+    Describe a general sum-of-products kernel.
+
+    :param summands: list of summands (of type GPCKernel) in the additive kernel
+    :param cap: captitalise first letter if True (default to False)
+    :type cap: boolean
+    :returns: description of kernel
+    """
+    assert len(summands) > 1, 'The list of summands must contain at least 2 members.'
+
+    data = summands[0].data
+
+    text = "An " if cap else "an "
+    text += "additive combination of "
+    phrases = []
+    for k in summands:
+        dims = k.getActiveDims()
+        if len(dims) == 1:
+            phrases.append(dims2text(dims, data))
+        else:
+            phrases.append(prod2text(dims, data))
+    text += list2text(phrases)
 
     return text
 
