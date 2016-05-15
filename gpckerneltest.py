@@ -16,6 +16,7 @@ def getGPyKernelTest(kernel, data):
     kern = gpckernel.GPCKernel(kernel, data, 1)
     k = kern.getGPyKernel()
     print "Latex: " + kern.latex()
+    print "Sensitivity: " + str(kern.sensitivity())
     print "Output:"
     print k
     # print k.input_sensitivity()

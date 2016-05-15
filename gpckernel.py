@@ -445,6 +445,22 @@ class GPCKernel(object):
             return 0.0
 
 
+    def sensitivity(self):
+        """
+        Sensitivity of the kernel with respect to all input dimensions.
+
+        :returs: array of sensitivity whose size matches that of getActiveDims()
+        """
+        sdict = sensitivityDict(self.kernel)
+        dims = self.getActiveDims()
+        s = np.array([0.0] * len(dims))
+        for i in range(len(dims)):
+            if dims[i] in sdict:
+                s[i] = sdict[dims[i]]
+
+        return s
+
+
     def shortInterp(self):
         """
         Interpretation of current kernel:
@@ -750,3 +766,35 @@ def computeError(model, XT, YT):
     """
     return misclassifiedPoints(model, XT, YT)['X'].shape[0] / float(XT.shape[0])
 
+
+def sensitivityDict(k):
+    """
+    Compute input sensitivity for each dimension. Recursive helper method for
+    GPCKernel.sensitivity().
+
+    :param k: kernel of type flexible_function.Kernel
+    :returns: a dictionary with dimension as keys and sensitivity as values.
+    Dimensions with zero sensitivity are not included.
+    """
+    if isinstance(k, (ff.SqExpKernel, ff.PeriodicKernel)):
+        return {k.dimension: (k.sf / k.lengthscale) ** 2}
+
+    elif isinstance(k, (ff.ConstKernel, ff.NoneKernel)):
+        return {}
+
+    elif isinstance(k, ff.SumKernel):
+        ret = {}
+        for o in k.operands:
+            for d, s in sensitivityDict(o).iteritems():
+                ret[d] = ret[d] + s if d in ret else s
+        return ret
+
+    elif isinstance(k, ff.ProductKernel):
+        ret = {}
+        for o in k.operands:
+            for d, s in sensitivityDict(o).iteritems():
+                ret[d] = ret[d] * s if d in ret else s
+        return ret
+
+    else:
+        raise NotImplementedError("Unrecognised kernel type " + type(k).__name__)
