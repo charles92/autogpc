@@ -45,10 +45,11 @@ class GPCReport(object):
     def makePreamble(self, paper='a4paper'):
         doc = self.doc
 
-        doc.packages.append(pl.Package('geometry', options=['a4paper', 'margin=1.2in']))
+        doc.packages.append(pl.Package('geometry', options=['a4paper', 'margin=25mm']))
         doc.packages.append(pl.Package('hyperref'))
         doc.packages.append(pl.Package('babel', options=['UKenglish']))
         doc.packages.append(pl.Package('isodate', options=['UKenglish']))
+        doc.packages.append(pl.Package('times'))
         doc.packages.append(pl.Package('siunitx'))
         doc.packages.append(ut.NoEscape(r'\sisetup{round-precision=2,round-mode=figures,scientific-notation=true}'))
 
@@ -430,18 +431,20 @@ class GPCReport(object):
             self.tabulateAll()
 
             dims = np.array(best.getActiveDims())
-            xvar = np.square(np.array(data.getDataShape()['x_sd'])[dims])
-            stvt = np.vstack((dims, best.sensitivity()))
             # TODO: Shall we normalise?
+            # xvar = np.square(np.array(data.getDataShape()['x_sd'])[dims])
             # stvt = np.vstack((dims, best.sensitivity() / xvar))
-            stvt = stvt[:,stvt[1,::-1].argsort()] # Sort in descending order
+            stvt = np.vstack((dims, best.sensitivity()))
+            stvt = stvt[:,stvt[1,:].argsort()[::-1]] # Sort in descending order
+            dims = stvt[0,:].astype(int).tolist()
+            stvt = stvt[1,:]
 
             s = "The best kernel that we have found relates the class label assignment " \
-              + "to input " + dims2text(stvt[0,:].astype(int).tolist(), data)
+              + "to input " + dims2text(dims, data)
             if ndim > 1:
                 s += " (in descending order of contribution). "
                 s += "Their variance-based sensitivities are "
-                s += list2text([r'\num{{{0}}}'.format(val) for val in stvt[1,:]])
+                s += list2text([r'\num{{{0}}}'.format(val) for val in stvt])
                 s += ", respectively. "
                 s += "\n\nIn specific, the model involves "
                 if len(summands) == 1:
@@ -518,7 +521,7 @@ class GPCReport(object):
     def export(self, filename=None):
         if filename is None:
             filename = 'report'
-        self.doc.generate_pdf(os.path.join(self.path, filename))
+        self.doc.generate_pdf(os.path.join(self.path, filename), clean_tex=False)
 
 
 ##############################################
