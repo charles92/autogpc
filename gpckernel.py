@@ -2,6 +2,7 @@
 # Department of Engineering, University of Cambridge
 
 import itertools as it
+import sys
 import numpy as np
 import flexible_function as ff      # GPSS kernel definitions
 import grammar                      # GPSS kernel expansion
@@ -190,10 +191,18 @@ class GPCKernel(object):
         X, Y, XT, YT = self.data.kFoldSplits(k=n_folds)
 
         # Train the appropriate GP model
-        if self.isSparse:
-            results = [self.trainSVGP(X[i], Y[i], XT=XT[i], YT=YT[i], randomise=randomise) for i in xrange(n_folds)]
-        else:
-            results = [self.trainFull(X[i], Y[i], XT=XT[i], YT=YT[i], randomise=randomise) for i in xrange(n_folds)]
+        trainfunc = self.trainSVGP if self.isSparse else self.trainFull
+        results = []
+        for i in range(n_folds):
+            try:
+                results.append(trainfunc(X[i], Y[i], XT=XT[i], YT=YT[i], randomise=randomise))
+            except:
+                print "Error during training:", sys.exc_info()[0]
+
+        # if self.isSparse:
+        #     results = [self.trainSVGP(X[i], Y[i], XT=XT[i], YT=YT[i], randomise=randomise) for i in xrange(n_folds)]
+        # else:
+        #     results = [self.trainFull(X[i], Y[i], XT=XT[i], YT=YT[i], randomise=randomise) for i in xrange(n_folds)]
 
         # Use kernel with median cross-validated error rate in a k-fold test
         # Record mean cross-validated error rate as overall performance
@@ -204,7 +213,8 @@ class GPCKernel(object):
             self.kernel = gpy2gpss(self.model.kern)
             self.errorRate = np.mean([x['error'] for x in results])
         else:
-            print "Warning: none of the %d optimisation attempts were successful." % n_folds
+            raise RuntimeError("Error during training: none of the %d optimisation attempts were successful." % n_folds)
+            # print "Warning: none of the %d optimisation attempts were successful." % n_folds
 
 
     def trainFull(self, X, Y, XT=None, YT=None, randomise=False):

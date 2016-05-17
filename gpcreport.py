@@ -419,7 +419,6 @@ class GPCReport(object):
         """
         best = self.cums[-1]
         data = best.data
-        ndim = data.getDim()
         summands = self.summands
 
         doc = self.doc
@@ -441,7 +440,7 @@ class GPCReport(object):
 
             s = "The best kernel that we have found relates the class label assignment " \
               + "to input " + dims2text(dims, data)
-            if ndim > 1:
+            if len(dims) > 1:
                 s += " (in descending order of contribution). "
                 s += "Their variance-based sensitivities are "
                 s += list2text([r'\num{{{0}}}'.format(val) for val in stvt])
