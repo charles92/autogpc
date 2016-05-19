@@ -58,14 +58,15 @@ Ynum[virgi_ind] = 1
 Ynum = np.hstack((Ynum[versi_ind], Ynum[virgi_ind])).reshape(X.shape[0], 1)
 m = GPy.models.GPClassification(X[:,0:3], Ynum, kernel=None)
 
-plotobj = gpcplt.create(m, xlabels=('SL', 'SW', 'PL'))
+plotobj = gpcplt.create(m, xlabels=('Sepal Length', 'Sepal Width', 'Petal Length'))
 plotobj.draw()
 plotobj.save('./imgs/test3d_before')
 m.optimize()
 plotobj.draw()
-plotobj.save('./imgs/test3d_after', animate=True)
+# plotobj.save('./imgs/test3d_after', animate=True)
+plotobj.save('./imgs/test3d_after')
 
-plotobj = gpcplt.create(m, active_dims=[0,2], xlabels=('SL', 'SW', 'PL'))
+plotobj = gpcplt.create(m, active_dims=[0,2], xlabels=('Sepal Length', 'Sepal Width', 'Petal Length'))
 plotobj.draw()
 plotobj.save('./imgs/test3d2_before')
 m.optimize()

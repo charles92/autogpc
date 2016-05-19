@@ -94,7 +94,7 @@ class GPCPlot1D(GPCPlot):
         ax.set_xlim(xmin, xmax)
         ax.set_ylim(ymin=-0.2, ymax=1.2)
         ax.set_yticks([0, 0.5, 1])
-        ax.set_ylabel(r'$\phi(f)$')
+        ax.set_ylabel(r'$\pi = \sigma(f)$')
         plt.rc('text', usetex=self.usetex)
         ax.set_xlabel(self.xlabels[0])
         plt.rc('text', usetex=True)
@@ -207,11 +207,13 @@ class GPCPlot3D(GPCPlot):
             xlabels = ('x1', 'x2', 'x3')
         if usetex:
             print 'Warning: usetex is not supported for 3-D plots. Using False instead.'
+        self.rendersize = (2400, 1800)
+        self.outsize = None
         GPCPlot.__init__(self, model, active_dims, xlabels, False)
 
     def draw(self, draw_posterior=True):
         m = self.model
-        fig = mlab.figure(bgcolor=(1, 1, 1), fgcolor=(0, 0, 0), size=(600, 601))
+        fig = mlab.figure(bgcolor=(1, 1, 1), fgcolor=(0, 0, 0), size=self.rendersize)
         plots = {}
 
         xpts = m.X[:,self.active_dims]
@@ -281,15 +283,15 @@ class GPCPlot3D(GPCPlot):
             print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.gif')
 
         # Static view 1
-        mlab.view(figure=self.fig, azimuth=45, elevation=60,
+        mlab.view(figure=self.fig, azimuth=60, elevation=60,
             distance='auto', focalpoint='auto',)
-        mlab.savefig(fname + '.png', figure=self.fig)
+        mlab.savefig(fname + '.png', figure=self.fig, size=self.outsize)
         print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '.png')
 
         # Static view 2
-        mlab.view(figure=self.fig, azimuth=225, elevation=120,
+        mlab.view(figure=self.fig, azimuth=240, elevation=120,
             distance='auto', focalpoint='auto')
-        mlab.savefig(fname + '-2.png', figure=self.fig)
+        mlab.savefig(fname + '-2.png', figure=self.fig, size=self.outsize)
         print 'DEBUG: GPCPlot3D.save(): fname={}'.format(fname + '-2.png')
 
         mlab.close(scene=self.fig)
