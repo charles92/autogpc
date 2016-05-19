@@ -108,7 +108,7 @@ class GPCReport(object):
 
         s = "\n\nThe training dataset contains {0} data points. ".format(npts) \
           + r"Among them, {0} ({1:.2f}\%) have positive class labels, ".format(npos, npos / float(npts) * 100) \
-          + r"whereas other {0} ({1:.2f}\%) have negative labels. ".format(nneg, nneg / float(npts) * 100) \
+          + r"and the other {0} ({1:.2f}\%) have negative labels. ".format(nneg, nneg / float(npts) * 100) \
           + "All input dimensions as well as the class label assignments " \
           + "are plotted in Figure {0}. ".format(self.fignum)
         doc.append(ut.NoEscape(s))
@@ -142,7 +142,7 @@ class GPCReport(object):
             # dims = stvt[0,:].astype(int).tolist()
             # stvt = stvt[1,:]
 
-            s = "The best kernel that I have found relates the class label assignment " \
+            s = "The best kernel that we have found relates the class label assignment " \
               + "to input " + dims2text(dims, data)
             if len(dims) > 1:
                 s += " In specific, the model involves "
@@ -166,10 +166,10 @@ class GPCReport(object):
             doc.append(ut.NoEscape(s))
             self.tabulateVariables()
 
-            s = "\n\nIn the rest of the report, I will first describe the " \
-              + "contribution of each individual input variable in Section 2. " \
-              + "This is followed by a detailed analysis in Section 3 " \
-              + "of the additive components that jointly make up the best model. "
+            s = "\n\nIn the rest of the report, we will first describe the " \
+              + "contribution of each individual input variable (Section 2). " \
+              + "This is followed by a detailed analysis of the additive " \
+              + "components that jointly make up the best model (Section 3). "
             doc.append(ut.NoEscape(s))
 
 
@@ -202,6 +202,7 @@ class GPCReport(object):
               + r"a cross-validated training error of {0:.2f}\%. ".format(error * 100)
 
             # Significance
+            s += "\n\n"
             e0 = float(self.constker.error())
             if error / e0 < 0.25:
                 s += "Compared with the null model (baseline), this variable "
@@ -343,8 +344,8 @@ class GPCReport(object):
               + "is to indiscriminately classify all samples as either positive " \
               + "or negative, whichever is more frequent in the training data. " \
               + "The classifier performance in each input dimension will be " \
-              + "compared against this baseline to yield a qualitative relevance " \
-              + "measure. "
+              + "compared against this baseline to tell if the input variable " \
+              + "is discriminative in terms of class determination . "
             doc.append(ut.NoEscape(s))
 
             for i in range(n_terms):
@@ -398,15 +399,17 @@ class GPCReport(object):
         error = self.cums[-1].error()
         doc = self.doc
         with doc.create(pl.Section("Additive Component Analysis")):
+            terms_str = "only one additive component" if n_terms == 1 else "{0} additive components".format(n_terms)
             s = r"The pattern underlying the dataset can be decomposed into " \
-              + r"{0} additive components, ".format(n_terms) \
+              + terms_str + ", " \
               + r"which contribute jointly to the final classifier which we have trained. " \
               + r"With all components in action, the classifier can achieve " \
               + r"a cross-validated training error rate of {0:.2f}\%. ".format(error * 100) \
               + r"The performance cannot be further improved by adding more components. "
             doc.append(ut.NoEscape(s))
 
-            s = "\n\nIn Table 2 we list all input variables as well as " \
+            s = "\n\nIn Table 2 we list the full additive model, " \
+              + "all input variables, as well as " \
               + "more complicated additive components (if any) considered above, " \
               + "ranked by their cross-validated training error rate. "
             doc.append(ut.NoEscape(s))
@@ -419,13 +422,21 @@ class GPCReport(object):
     def tabulateAll(self):
         """
         Create a table that summarises all input variables and additive
-        components, including the constant kernel as baseline.
+        components, including the constant kernel as baseline and the final
+        full additive model.
         """
+        # 1-D variables
         ks = self.best1d[:]
+        # Baseline: constant kernel
         ks.append(self.constker)
+        # Additive components, if not 1-D
         for k in self.summands:
             if len(k.getActiveDims()) > 1:
                 ks.append(k)
+        # Full additive model, if involves more than one additive term
+        if len(self.summands) > 1:
+            ks.append(best[-1])
+
         ks.sort(key=lambda k: round(k.getNLML(), 2))
         ks.sort(key=lambda k: round(k.error(), 4))
         data = ks[0].data
@@ -436,7 +447,8 @@ class GPCReport(object):
 
         doc = self.doc
         with doc.create(pl.Table(position='h!')) as tab:
-            tab.add_caption(ut.NoEscape("All input variables and additive components"))
+            caption_str = "Classification performance of the full model, its additive components (if any), all input variables, and the baseline."
+            tab.add_caption(ut.NoEscape(caption_str))
 
             t = pl.Tabular('rlrr')
             # Header
