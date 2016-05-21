@@ -5,6 +5,7 @@ import numpy as np
 import pylatex as pl
 import pylatex.utils as ut
 import os, shutil
+from datetime import datetime
 from gpckernel import GPCKernel
 from gpcdata import GPCData
 
@@ -22,7 +23,8 @@ class GPCReport(object):
         self.kers, self.cums = cumulateAdditiveKernels(self.summands)
 
         # Prepare directory
-        p = os.path.join(root, name)
+        now = datetime.now().strftime('%Y%m%d%H%M%S')
+        p = os.path.join(root, now + '_' + name)
         try:
             if os.path.exists(p): shutil.rmtree(p)
             os.makedirs(p)
@@ -435,7 +437,7 @@ class GPCReport(object):
                 ks.append(k)
         # Full additive model, if involves more than one additive term
         if len(self.summands) > 1:
-            ks.append(best[-1])
+            ks.append(self.best[-1])
 
         ks.sort(key=lambda k: round(k.getNLML(), 2))
         ks.sort(key=lambda k: round(k.error(), 4))

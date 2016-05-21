@@ -29,7 +29,7 @@ def repeat(f):
             try:
                 f(*args)
                 failed = False
-            except Error:
+            except Exception:
                 fails += 1
         if failed:
             print '%s function failed after %d times.' % (f.func_name, fails)
@@ -46,7 +46,7 @@ class GPCExperiment(object):
         pass
 
     @timing
-    @repeat
+    # @repeat
     def pima(self, dims=[1,5,6,7], depth=4, width=2):
         data = pods.datasets.pima(dims=dims)
         X, Y, XLabel = data['X'], data['Y'], data['XLabel']
@@ -62,7 +62,7 @@ class GPCExperiment(object):
 
 
     @timing
-    @repeat
+    # @repeat
     def wisconsin(self, dims=[0,1,4,5,7], depth=4, width=2):
         data = pods.datasets.breastoriginal(dims=dims)
         X, Y, XLabel = data['X'], data['Y'], data['XLabel']
@@ -77,7 +77,7 @@ class GPCExperiment(object):
 
 
     @timing
-    @repeat
+    # @repeat
     def bupa(self, dims=range(5), depth=4, width=2):
         data = pods.datasets.bupa(dims=dims)
         X, Y, XLabel = data['X'], data['Y'], data['XLabel']
@@ -92,7 +92,7 @@ class GPCExperiment(object):
 
 
     @timing
-    @repeat
+    # @repeat
     def cleveland(self, dims=[0,3,4,7,9,11], depth=5, width=2):
         data = pods.datasets.cleveland(dims=dims)
         X, Y, XLabel = data['X'], data['Y'], data['XLabel']
