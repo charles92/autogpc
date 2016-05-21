@@ -436,8 +436,9 @@ class GPCReport(object):
             if len(k.getActiveDims()) > 1:
                 ks.append(k)
         # Full additive model, if involves more than one additive term
+        best = self.history[-1]
         if len(self.summands) > 1:
-            ks.append(self.best[-1])
+            ks.append(best)
 
         ks.sort(key=lambda k: round(k.getNLML(), 2))
         ks.sort(key=lambda k: round(k.error(), 4))
