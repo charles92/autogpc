@@ -160,7 +160,7 @@ class GPCReport(object):
               + r"a negative log marginal likelihood of {0:.2f}. ".format(best.getNLML())
             doc.append(ut.NoEscape(s))
 
-            s = "\n\nI have also analysed the relevance of each input variable. " \
+            s = "\n\nWe have also analysed the relevance of each input variable. " \
               + "They are listed below in Table 1 " \
               + "in descending order of inferred relevance " \
               + "(i.e.~in ascending order of cross-validated training error of " \

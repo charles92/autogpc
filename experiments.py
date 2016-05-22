@@ -5,7 +5,8 @@ from gpcexperiment import GPCExperiment
 
 ex = GPCExperiment()
 
-ex.bupa()
-ex.pima()
-ex.wisconsin()
-ex.cleveland()
+for i in range(3):
+    ex.bupa()
+    ex.pima()
+    ex.wisconsin()
+    ex.cleveland()
