@@ -114,6 +114,9 @@ class GPCPlot1D(GPCPlot):
             mu = m.likelihood.gp_link.transf(mu)
             plots['link'] = plotGP(xgrd, mu, lower=lower, upper=upper, ax=ax)
 
+        fig.set_dpi(600)
+        fig.set_size_inches(5, 3.75, forward=False)
+        fig.tight_layout()
         self.fig = fig
         return plots
 
@@ -190,6 +193,9 @@ class GPCPlot2D(GPCPlot):
                 ax1.clabel(cs, fontsize=8)
                 plots['gpsd'] = cs
 
+        fig.set_dpi(600)
+        fig.set_size_inches(5, 3.75, forward=False)
+        fig.tight_layout()
         self.fig = fig
         return plots
 
@@ -207,7 +213,7 @@ class GPCPlot3D(GPCPlot):
             xlabels = ('x1', 'x2', 'x3')
         if usetex:
             print 'Warning: usetex is not supported for 3-D plots. Using False instead.'
-        self.rendersize = (2400, 1800)
+        self.rendersize = (1024, 768)
         self.outsize = None
         GPCPlot.__init__(self, model, active_dims, xlabels, False)
 
