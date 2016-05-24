@@ -14,7 +14,7 @@ class GPCReport(object):
     AutoGPC data analysis report.
     """
 
-    def __init__(self, root='./latex', name='default', paper='a4paper', fontsize='11pt', history=None, best1d=None, constkernel=None):
+    def __init__(self, root='./latex', name='default', paper='a4paper', fontsize='12pt', history=None, best1d=None, constkernel=None):
         self.name = name
         self.history = history
         self.best1d = best1d
@@ -73,7 +73,7 @@ class GPCReport(object):
           + "AutoGPC is an automatic Gaussian process (GP) classifier that " \
           + "aims to find the structure underlying a dataset without human input. " \
           + "For more information, please visit " \
-          + r"\url{https://github.com/charles92/autogpc}."
+          + r"\url{http://github.com/charles92/autogpc}."
         doc.append(ut.NoEscape(s))
 
         doc.append(ut.NoEscape("\n\n"))
@@ -102,9 +102,9 @@ class GPCReport(object):
         doc.append(ut.NoEscape(s))
 
         s = "There is one binary output variable $y$, where " \
-          + r"$y=0$ (negative) represents ``{0}''".format(data.YLabel[0]) \
+          + r"$y=0$ (negative) represents `{0}'".format(data.YLabel[0]) \
           + ", and " \
-          + r"$y=1$ (positive) represents ``{0}''".format(data.YLabel[1]) \
+          + r"$y=1$ (positive) represents `{0}'".format(data.YLabel[1]) \
           + ". "
         doc.append(ut.NoEscape(s))
 
@@ -115,11 +115,11 @@ class GPCReport(object):
           + "are plotted in Figure {0}. ".format(self.fignum)
         doc.append(ut.NoEscape(s))
 
-        with doc.create(pl.Figure(position='h!')) as fig:
-            fig.add_image(imgOutName)
+        with doc.create(pl.Figure(position='htbp!')) as fig:
+            fig.add_image(imgOutName, width=ut.NoEscape(r'0.8\textwidth'))
             s = "The input dataset. " \
-              + r"Positive samples (``{0}'') are coloured red, ".format(data.YLabel[1]) \
-              + r"and negative ones (``{0}'') blue. ".format(data.YLabel[0])
+              + r"Positive samples (`{0}') are coloured red, ".format(data.YLabel[1]) \
+              + r"and negative ones (`{0}') blue. ".format(data.YLabel[0])
             fig.add_caption(ut.NoEscape(s))
             self.fignum += 1
 
@@ -147,7 +147,7 @@ class GPCReport(object):
             s = "The best kernel that we have found relates the class label assignment " \
               + "to input " + dims2text(dims, data)
             if len(dims) > 1:
-                s += " In specific, the model involves "
+                s += ". In specific, the model involves "
                 if len(summands) == 1:
                     s += prod2text(summands[0].getActiveDims(), data)
                 else:
@@ -156,14 +156,14 @@ class GPCReport(object):
             doc.append(ut.NoEscape(s))
 
             s = "This model can achieve " \
-              + r"a cross-validated training error rate of {0:.2f}\% and ".format(best.error() * 100) \
+              + r"a cross-validated classification error of {0:.2f}\% and ".format(best.error() * 100) \
               + r"a negative log marginal likelihood of {0:.2f}. ".format(best.getNLML())
             doc.append(ut.NoEscape(s))
 
             s = "\n\nWe have also analysed the relevance of each input variable. " \
               + "They are listed below in Table 1 " \
               + "in descending order of inferred relevance " \
-              + "(i.e.~in ascending order of cross-validated training error of " \
+              + "(i.e.~in ascending order of cross-validated error of " \
               + "the best one-dimensional GP classifier). "
             doc.append(ut.NoEscape(s))
             self.tabulateVariables()
@@ -201,7 +201,7 @@ class GPCReport(object):
               + "mean value {0:.2f} and standard deviation {1:.2f}. ".format(xmu, xsd) \
               + "Its observed minimum and maximum are {0:.2f} and {1:.2f} respectively. ".format(xmin, xmax) \
               + "A GP classifier trained on this variable alone can achieve " \
-              + r"a cross-validated training error of {0:.2f}\%. ".format(error * 100)
+              + r"a cross-validated classification error of {0:.2f}\%. ".format(error * 100)
 
             # Significance
             s += "\n\n"
@@ -209,7 +209,7 @@ class GPCReport(object):
             if error / e0 < 0.25:
                 s += "Compared with the null model (baseline), this variable "
                 s += "contains strong evidence whether the sample belongs to "
-                s += "class ``{0}''. ".format(data.YLabel[1])
+                s += "class `{0}'. ".format(data.YLabel[1])
             elif error / e0 < 0.8:
                 s += "Compared with the null model (baseline), this variable "
                 s += "contains some evidence of class label assignment. "
@@ -245,8 +245,8 @@ class GPCReport(object):
             imgFilename = imgName + imgFormat
             ker.draw(os.path.join(self.path, imgName), active_dims_only=True)
             caption_str = r"Trained classifier on " + dims2text([dim], ker.data) + "."
-            with doc.create(pl.Figure(position='h!')) as fig:
-                fig.add_image(imgFilename, width=ut.NoEscape(r'0.5\textwidth'))
+            with doc.create(pl.Figure(position='htbp!')) as fig:
+                fig.add_image(imgFilename, width=ut.NoEscape(r'0.7\textwidth'))
                 fig.add_caption(ut.NoEscape(caption_str))
                 self.fignum += 1
 
@@ -266,7 +266,7 @@ class GPCReport(object):
         error_min = round(min([k.error() for k in ks]), 4)
 
         doc = self.doc
-        with doc.create(pl.Table(position='h!')) as tab:
+        with doc.create(pl.Table(position='htbp!')) as tab:
             tab.add_caption(ut.NoEscape("Input variables"))
 
             t = pl.Tabular('rlrrrcrr')
@@ -337,7 +337,7 @@ class GPCReport(object):
               + "of the {0:d} input dimensions. ".format(n_terms) \
               + "By considering the best classification performance that is " \
               + "achievable in each dimension, we are able to infer which " \
-              + "dimensions are the most relevant to the class assignment. "
+              + "dimensions are the most relevant to the class label assignment. "
             doc.append(ut.NoEscape(s))
             doc.append(ut.NoEscape("\n\n"))
 
@@ -347,7 +347,7 @@ class GPCReport(object):
               + "or negative, whichever is more frequent in the training data. " \
               + "The classifier performance in each input dimension will be " \
               + "compared against this baseline to tell if the input variable " \
-              + "is discriminative in terms of class determination . "
+              + "is discriminative in terms of class determination. "
             doc.append(ut.NoEscape(s))
 
             for i in range(n_terms):
@@ -372,7 +372,7 @@ class GPCReport(object):
         with doc.create(pl.Subsection("Component {0}".format(term))):
             if term == 1:
                 s = r"With only one additive component, the GP classifier can achieve " \
-                  + r"a cross-validated training error rate of {0:.2f}\%. ".format(error * 100) \
+                  + r"a cross-validated classification error of {0:.2f}\%. ".format(error * 100) \
                   + r"The corresponding negative log marginal likelihood is {0:.2f}. ".format(nlml)
                 doc.append(ut.NoEscape(s))
 
@@ -381,7 +381,7 @@ class GPCReport(object):
                 doc.append(ut.NoEscape(s))
 
             else:
-                s = r"With {0} additive components, the cross-validated training error ".format(term) \
+                s = r"With {0} additive components, the cross-validated classification error ".format(term) \
                   + r"can be reduced by {0:.2f}\% to {1:.2f}\%. ".format(delta * 100, error * 100) \
                   + r"The corresponding negative log marginal likelihood is {0:.2f}. ".format(nlml)
                 doc.append(ut.NoEscape(s))
@@ -406,14 +406,14 @@ class GPCReport(object):
               + terms_str + ", " \
               + r"which contribute jointly to the final classifier which we have trained. " \
               + r"With all components in action, the classifier can achieve " \
-              + r"a cross-validated training error rate of {0:.2f}\%. ".format(error * 100) \
+              + r"a cross-validated classification error rate of {0:.2f}\%. ".format(error * 100) \
               + r"The performance cannot be further improved by adding more components. "
             doc.append(ut.NoEscape(s))
 
             s = "\n\nIn Table 2 we list the full additive model, " \
               + "all input variables, as well as " \
-              + "more complicated additive components (if any) considered above, " \
-              + "ranked by their cross-validated training error rate. "
+              + "more complex additive components (if any) considered above, " \
+              + "ranked by their cross-validated error. "
             doc.append(ut.NoEscape(s))
             self.tabulateAll()
 
@@ -449,7 +449,7 @@ class GPCReport(object):
         error_min = round(min([k.error() for k in ks]), 4)
 
         doc = self.doc
-        with doc.create(pl.Table(position='h!')) as tab:
+        with doc.create(pl.Table(position='htbp!')) as tab:
             caption_str = "Classification performance of the full model, its additive components (if any), all input variables, and the baseline."
             tab.add_caption(ut.NoEscape(caption_str))
 
@@ -518,8 +518,8 @@ class GPCReport(object):
         if n_terms == 1 or len(cumDims) > 3:
             # Only present current additive component
             caption_str = r"Trained classifier on " + dims2text(kerDims, ker.data) + "."
-            with doc.create(pl.Figure(position='h!')) as fig:
-                fig.add_image(img1Filename, width=ut.NoEscape(r'0.5\textwidth'))
+            with doc.create(pl.Figure(position='htbp!')) as fig:
+                fig.add_image(img1Filename, width=ut.NoEscape(r'0.7\textwidth'))
                 fig.add_caption(ut.NoEscape(caption_str))
                 self.fignum += 1
 
@@ -533,16 +533,16 @@ class GPCReport(object):
             caption2_str = r"Previous and current components combined, involving " + dims2text(cumDims, cum.data) + "."
             caption_str = r"Trained classifier on " + dims2text(cumDims, cum.data) + "."
 
-            with doc.create(pl.Figure(position='h!')) as fig:
+            with doc.create(pl.Figure(position='htbp!')) as fig:
                 with doc.create(pl.SubFigure(
                     position='b',
-                    width=ut.NoEscape(r'0.45\textwidth') )) as subfig1:
+                    width=ut.NoEscape(r'0.47\textwidth') )) as subfig1:
                     subfig1.add_image(img1Filename, width=ut.NoEscape(r'\textwidth'))
                     subfig1.add_caption(ut.NoEscape(caption1_str))
                 doc.append(ut.NoEscape(r'\hfill'))
                 with doc.create(pl.SubFigure(
                     position='b',
-                    width=ut.NoEscape(r'0.45\textwidth') )) as subfig2:
+                    width=ut.NoEscape(r'0.47\textwidth') )) as subfig2:
                     subfig2.add_image(img2Filename, width=ut.NoEscape(r'\textwidth'))
                     subfig2.add_caption(ut.NoEscape(caption2_str))
                 fig.add_caption(ut.NoEscape(caption_str))
@@ -602,7 +602,7 @@ def dims2text(dims, data, cap=False):
     text = "Variable" if cap else "variable"
     if len(dims) > 1: text += "s"
     text += " "
-    text += list2text([r"``{}''".format(xl[d]) for d in dims])
+    text += list2text([r"`{}'".format(xl[d]) for d in dims])
 
     return text
 
@@ -661,7 +661,7 @@ def cumulateAdditiveKernels(summands):
 
     :param summands: list of GPCKernel objects to be cumulated
     """
-    # Sort in descending order of cross-validated training error
+    # Sort in descending order of cross-validated error
     terms = sorted(summands, key=lambda k: k.error(), reverse=True)
     ker = terms.pop()
     cum = ker

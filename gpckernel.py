@@ -638,10 +638,10 @@ def gpss2latex(k):
         return r"{\textsc{C}}"
 
     elif isinstance(k, ff.SqExpKernel):
-        return r"{{\textsc{{SE{0}}}}}".format(k.dimension + 1)
+        return r"{{\textsc{{SE}}_{0}}}".format(k.dimension + 1)
 
     elif isinstance(k, ff.PeriodicKernel):
-        return r"{{\textsc{{Per{0}}}}}".format(k.dimension + 1)
+        return r"{{\textsc{{Per}}_{0}}}".format(k.dimension + 1)
 
     elif isinstance(k, ff.SumKernel):
         return " + ".join([gpss2latex(o) for o in k.operands])
