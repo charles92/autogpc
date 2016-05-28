@@ -53,9 +53,7 @@ class GPCKernel(object):
         self.parent = parent
         self.model = None
         self.isSparse = None
-
-        if not isinstance(self.kernel, ff.NoneKernel):
-            self.kernel.initialise_params(data_shape=self.data.getDataShape())
+        resetGpssParams(self.kernel, data=self.data)
 
 
     def __repr__(self):
@@ -153,9 +151,10 @@ class GPCKernel(object):
         """
         Reset the kernel hyperparameters to random values.
         """
-        self.kernel = removeKernelParams(self.kernel)
-        if not isinstance(self.kernel, ff.NoneKernel):
-            self.kernel.initialise_params(data_shape=self.data.getDataShape())
+        # self.kernel = removeKernelParams(self.kernel)
+        # if not isinstance(self.kernel, ff.NoneKernel):
+        #     self.kernel.initialise_params(data_shape=self.data.getDataShape())
+        resetGpssParams(self.kernel, data=self.data)
         self.isSparse = None
         self.errorRate = None
 
@@ -239,10 +238,9 @@ class GPCKernel(object):
         if XT is None or YT is None:
             XT, YT = X, Y
 
-        k = self.kernel
+        k = self.kernel.copy()
         if randomise:
-            k = removeKernelParams(k)
-            k.initialise_params(data_shape=self.data.getDataShape())
+            resetGpssParams(k, data=self.data)
 
         m = GPy.models.GPClassification(X, Y, kernel=gpss2gpy(k, data=self.data))
         m.optimize()
@@ -277,10 +275,9 @@ class GPCKernel(object):
         if XT is None or YT is None:
             XT, YT = X, Y
 
-        k = self.kernel
+        k = self.kernel.copy()
         if randomise:
-            k = removeKernelParams(k)
-            k.initialise_params(data_shape=self.data.getDataShape())
+            resetGpssParams(k, data=self.data)
 
         i = np.random.permutation(X.shape[0])[:inducing]
         Z = X[i].copy()
@@ -533,17 +530,17 @@ def gpss2gpy(kernel, data=None):
     assert isinstance(kernel, ff.Kernel), "kernel must be of type flexible_function.Kernel"
 
     # Hard-coded constraint on sf
-    sf2min, sf2max = 0.2 ** 2, 20 ** 2
+    # sf2min, sf2max = 0.2 ** 2, 20 ** 2
 
     if isinstance(kernel, ff.SqExpKernel):
         sf2 = kernel.sf ** 2
         ls = kernel.lengthscale
         dim = kernel.dimension
         gpyker = GPy.kern.RBF(1, variance=sf2, lengthscale=ls, active_dims=np.array([dim]))
-        gpyker['variance'].constrain_bounded(sf2min, sf2max, warning=False)
+        # gpyker['variance'].constrain_bounded(sf2min, sf2max, warning=False)
         if data:
-            gpyker['lengthscale'].constrain_bounded(data.minSeparation(dims=dim),
-                data.inputRange(dims=dim) * 2, warning=False)
+            bounds = data.getLengthscaleBounds(dims=dim)
+            gpyker['lengthscale'].constrain_bounded(bounds[0], bounds[1], warning=False)
         return gpyker
 
     elif isinstance(kernel, ff.PeriodicKernel):
@@ -552,12 +549,12 @@ def gpss2gpy(kernel, data=None):
         ls = kernel.lengthscale
         dim = kernel.dimension
         gpyker = GPy.kern.StdPeriodic(1, variance=sf2, period=per, lengthscale=ls, active_dims=np.array([dim]))
-        gpyker['variance'].constrain_bounded(sf2min, sf2max, warning=False)
+        # gpyker['variance'].constrain_bounded(sf2min, sf2max, warning=False)
         if data:
-            gpyker['lengthscale'].constrain_bounded(data.minSeparation(dims=dim),
-                data.inputRange(dims=dim) * 2, warning=False)
-            gpyker['period'].constrain_bounded(data.minSeparation(dims=dim) * 2,
-                data.inputRange(dims=dim), warning=False)
+            bounds = data.getLengthscaleBounds(dims=dim)
+            gpyker['lengthscale'].constrain_bounded(bounds[0], bounds[1], warning=False)
+            bounds = data.getPeriodBounds(dims=dim)
+            gpyker['period'].constrain_bounded(bounds[0], bounds[1], warning=False)
         return gpyker
 
     elif isinstance(kernel, ff.ConstKernel):
@@ -618,6 +615,78 @@ def gpy2gpss(kernel):
 
     else:
         raise NotImplementedError("Cannot translate kernel of type " + type(kernel).__name__)
+
+
+def resetGpssParams(k, data=None, sd=1):
+    """
+    Reset kernel parameters to random values, according to constraints
+
+    :param kernel: GPSS kernel as defined in `flexible_function.py`
+    :param data: `GPCData` object. If None (default), do not apply constraints
+    :param sd: standard deviation of Gaussians used to generate random parameters
+    """
+    assert isinstance(k, ff.Kernel), "kernel must be of type flexible_function.Kernel"
+    data_shape = data.getDataShape()
+
+    if isinstance(k, ff.NoneKernel):
+        pass
+
+    elif isinstance(k, ff.ConstKernel):
+        # Standard deviation
+        if np.random.rand() < 2.0 / 3:
+            sf = np.random.normal(loc=np.log(data_shape['y_sd']), scale=sd)
+        else:
+            sf = np.random.normal(loc=0, scale=sd)
+        k.sf = np.exp(sf)
+
+    elif isinstance(k, ff.SqExpKernel):
+        # Lengthscale
+        bounds = np.log(data.getLengthscaleBounds(dims=k.dimension))
+        if np.random.rand() < 2.0 / 3:
+            ls = np.random.normal(loc=np.log(data_shape['x_sd'][k.dimension]), scale=sd)
+        else:
+            ls = np.random.sample() * (bounds[1] - bounds[0]) + bounds[0]
+        if ls < bounds[0] or ls > bounds[1]:
+            ls = np.random.sample() * (bounds[1] - bounds[0]) + bounds[0]
+        k.lengthscale = np.exp(ls)
+        # Standard deviation
+        if np.random.rand() < 1.0 / 2:
+            sf = np.random.normal(loc=np.log(data_shape['y_sd']), scale=sd)
+        else:
+            sf = np.random.normal(loc=0, scale=sd)
+        k.sf = np.exp(sf)
+
+    elif isinstance(k, ff.PeriodicKernel):
+        # Lengthscale
+        bounds = np.log(data.getLengthscaleBounds(dims=k.dimension))
+        ls = np.random.normal(loc=0, scale=sd)
+        if ls < bounds[0] or ls > bounds[1]:
+            ls = np.random.sample() * (bounds[1] - bounds[0]) + bounds[0]
+        k.lengthscale = np.exp(ls)
+        # Period
+        bounds = np.log(data.getPeriodBounds(dims=k.dimension))
+        if np.random.rand() < 1.0 / 3:
+            p = np.random.normal(loc=0, scale=sd)
+        elif np.random.rand() < 1.0 / 2:
+            p = np.random.normal(loc=-3.95, scale=sd)
+        else:
+            p = np.random.normal(loc=-5.9, scale=sd)
+        if p < bounds[0] or p > bounds[1]:
+            p = np.random.sample() * (bounds[1] - bounds[0]) + bounds[0]
+        k.period = np.exp(p)
+        # Standard deviation
+        if np.random.rand() < 1.0 / 2:
+            sf = np.random.normal(loc=np.log(data_shape['y_sd']), scale=sd)
+        else:
+            sf = np.random.normal(loc=0, scale=sd)
+        k.sf = np.exp(sf)
+
+    elif isinstance(k, (ff.SumKernel, ff.ProductKernel)):
+        for o in k.operands:
+            resetGpssParams(o, data=data, sd=sd)
+
+    else:
+        raise NotImplementedError("Unrecognised kernel type " + type(k).__name__)
 
 
 def gpss2latex(k):

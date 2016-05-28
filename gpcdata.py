@@ -97,18 +97,9 @@ class GPCData(object):
         if dims is None:
             dims = range(self.getDim())
         if not hasattr(self, 'xranges') or self.xranges is None:
-            self.xranges = self.computeInputRange()
+            X = self.X
+            self.xranges = X.max(axis=0, keepdims=True) - X.min(axis=0, keepdims=True)
         return self.xranges[0,dims]
-
-
-    def computeInputRange(self):
-        """
-        Compute range of values in each input dimension.
-
-        :returns: 1xD array of value range in each dimension
-        """
-        X = self.X
-        return X.max(axis=0, keepdims=True) - X.min(axis=0, keepdims=True)
 
 
     def minSeparation(self, dims=None):
@@ -122,23 +113,37 @@ class GPCData(object):
         if dims is None:
             dims = range(self.getDim())
         if not hasattr(self, 'minseps') or self.minseps is None:
-            self.minseps = self.computeMinSeparation()
+            X = self.X
+            ndim = self.getDim()
+            minseps = np.ndarray((1,ndim))
+            for i in range(ndim):
+                minseps[0,i] = np.diff(np.unique(X[:,i])).min()
+            self.minseps = minseps
         return self.minseps[0,dims]
 
 
-    def computeMinSeparation(self):
+    def getLengthscaleBounds(self, dims=None):
         """
-        Compute the minimum separation between distinct values in each dimension.
-        Useful in constraining the length scale of SE kernels.
+        Compute the lower and upper bounds of the lengthscale.
 
-        :returns: 1xD array of minimum separation in each dimension
+        :param dims: the input dimension(s) of interest
+        :returns: 2xD array where D is the length of dims
         """
-        X = self.X
-        ndim = self.getDim()
-        minseps = np.ndarray((1,ndim))
-        for i in range(ndim):
-            minseps[0,i] = np.diff(np.unique(X[:,i])).min()
-        return minseps
+        if dims is None:
+            dims = range(self.getDim())
+        lower = self.minSeparation(dims=dims)
+        upper = self.inputRange(dims=dims) * 2
+        return np.vstack((lower, upper))
+
+
+    def getPeriodBounds(self, dims=None):
+        """
+        Compute the lower and upper bounds of the period.
+
+        :param dims: the input dimension(s) of interest
+        :returns: 2xD array where D is the length of dims
+        """
+        return self.getLengthscaleBounds(dims=dims)
 
 
     def kFoldSplits(self, k=5):

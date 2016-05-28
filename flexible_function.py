@@ -986,7 +986,7 @@ class ConstKernel(Kernel):
             # Set scale factor with output location, scale or neutrally
             if np.random.rand() < 1.0 / 3:
                 self.sf = np.random.normal(loc=np.log(np.abs(data_shape['y_mean'])), scale=sd)
-            elif np.random.rand() < 2.0 / 3:
+            elif np.random.rand() < 1.0 / 2:
                 self.sf = np.random.normal(loc=data_shape['y_sd'], scale=sd)
             else:
                 self.sf = np.random.normal(loc=0, scale=sd)
